@@ -24,3 +24,8 @@ behavior.
     overlapping approved bookings, not a simple taken/free flag like venues.
 11. **League standings have no tie-break rule in v1** — teams with equal points are shown as
     co-ranked, not artificially ordered.
+12. **A withdrawn team's remaining matches are forfeited, not removed** — the opposing team
+    is awarded the win for each, and the bracket is not regenerated.
+13. **A hostel change is blocked while the student is on an active team in an in-progress
+    tournament** — it can proceed once the tournament ends or they leave the team, protecting
+    rule 1 (one hostel per player) from being violated mid-tournament.

@@ -93,3 +93,18 @@ relationship that authorizes it (e.g. "is this user *this* team's captain?"), ne
 rank ordering. Scoped checks make every permission traceable to an explicit rule in
 `roles-permissions.md`.
 **Status:** Adopted.
+
+---
+
+### D-007 — Resolved Q-008, Q-009, Q-010
+
+**Decisions:**
+- **Q-008:** A player cannot remove themselves from a team — only the Captain can. Keeps
+  roster changes under one accountable person.
+- **Q-009:** A team withdrawing after fixtures/matches exist forfeits its remaining matches;
+  the opposing team is awarded the win in each. The bracket is not regenerated.
+- **Q-010:** A hostel change request is blocked while the student is on an active team in an
+  in-progress tournament, to prevent breaking business rule 1 (one hostel per player)
+  mid-tournament. It can proceed once the tournament ends or they leave the team.
+
+**Status:** Adopted.

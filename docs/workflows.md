@@ -90,23 +90,27 @@ Both stay visible until one is approved (which locks the slot); the other is the
 the Sports Department — rejected outright, or routed into the same alternative-slot
 suggestions used for disruptions.
 
+### Player withdrawal
+A player cannot remove themselves from a team — only the team's Captain can remove a
+player, same as adding one (per D-007). Keeps roster changes under one accountable person
+instead of scattered self-service edits. Allowed only before the registration deadline, same
+as any other roster edit.
+
+### Team withdrawal
+Before fixtures are generated: a clean removal, no trace left in the bracket. After
+fixtures/matches already exist: the team's remaining matches are marked forfeited, and the
+opposing team in each of those matches is awarded the win — a walkover — rather than the
+bracket being regenerated (per D-007).
+
+### Hostel change mid-tournament
+Blocked while the student is on an active (non-withdrawn) team in an in-progress tournament
+— approving it immediately would risk putting them on a team that no longer matches their
+hostel, breaking business rule 1. The request can proceed once the tournament ends, or once
+the student withdraws or is removed from the team (per D-007).
+
 ---
 
 ## Open questions surfaced by this phase
 
-Designing the exception workflows in detail surfaced three real gaps — none of these were
-discussed before now. Proposed defaults below, not confirmed decisions.
-
-- **Q-008 — Player withdrawal.** Can a player remove *themselves* from a team, or only the
-  Captain? Proposed default: yes, self-withdrawal is allowed, under the same rule as Captain
-  edits — only before the registration deadline.
-- **Q-009 — Team withdrawal after fixtures exist.** Withdrawing before fixtures are generated
-  is a clean removal. What happens if a team withdraws *after* fixtures exist and matches are
-  scheduled? Proposed default: it becomes a forfeit — the team's remaining matches are marked
-  as losses/walkovers rather than removed from the bracket, matching how this is normally
-  handled in real tournaments.
-- **Q-010 — Hostel change while actively registered.** A student mid-tournament requests a
-  hostel change. If approved immediately, it could put them on a team that no longer matches
-  their hostel — breaking the core eligibility rule. Proposed default: block the change
-  request (or hold it pending) while the student is on an active team in an in-progress
-  tournament; it can proceed once the tournament ends or they withdraw.
+Designing the exception workflows in detail surfaced three real gaps, all now resolved — see
+`decision-log.md` D-007.
