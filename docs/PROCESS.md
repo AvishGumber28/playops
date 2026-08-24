@@ -22,8 +22,8 @@ Then stop before starting the next phase.
 | 1 | Freeze & finalize requirements | Complete |
 | 2 | User roles & permissions | Complete, pending review |
 | 3 | User journeys & workflow design | Complete |
-| 4 | Data model & database design | Complete, pending review |
-| 5 | System architecture | Not started |
+| 4 | Data model & database design | Complete |
+| 5 | System architecture | Complete, pending review |
 | 6 | Technology & dev environment | Not started |
 | 7 | Backend foundation | Not started |
 | 8 | Frontend foundation | Not started |
