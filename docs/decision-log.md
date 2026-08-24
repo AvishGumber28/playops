@@ -58,3 +58,25 @@ from day one and were folded into Must Have — the first two merged into a sing
 rather than built as separate features, since they're detection and resolution halves of the
 same problem.
 **Status:** Adopted, pending review per Phase 1's own stop-and-review gate.
+
+---
+
+### D-005 — Resolved Q-004, Q-005, Q-006
+
+**Decisions:**
+- **Q-004:** A hostel change request is approved by the student's *current* hostel's
+  Caretaker — the one releasing them — not the requested hostel's.
+- **Q-005:** No tie-break rule in v1. Teams with equal points in a league are shown
+  co-ranked. Head-to-head is the natural first upgrade if this becomes a real problem, since
+  it needs nothing beyond match results already stored — unlike a sport-specific stat (e.g.
+  goal difference), which would need more granular scoring data than some scorecard
+  templates currently capture.
+- **Q-006:** No appointment history is kept when a Caretaker replaces a Sports Secretary —
+  matches the existing single-field schema design and the project's own "don't
+  over-engineer" principle.
+
+**Reasoning:** Q-004 and Q-006 were explicit team decisions. Q-005 had no strong preference
+either way — resolved here with stated reasoning rather than left open indefinitely, per the
+process's own rule against silently deferring decisions.
+
+**Status:** Adopted.

@@ -78,9 +78,9 @@ eligibility check in FR-006 has nothing to check against).
 **Permissions:** Self-service for the initial selection. Change requests require Caretaker
 approval.
 
-> **Open question (see `open-questions.md` Q-004):** which Caretaker approves a change
-> request — the student's *current* hostel, the *requested* hostel, or both? Not decided in
-> the original discussion; needs an explicit answer before this is implemented.
+> **Resolved (see `decision-log.md` D-005):** the student's current hostel's Caretaker
+> approves — they're the one releasing the student, which mirrors how they also appoint that
+> hostel's Secretary.
 
 **Business rules:** One hostel per student at any given time, enforced by requiring approval
 for any change rather than allowing free self-service switching.
@@ -291,8 +291,8 @@ matches on request. Knockout tournaments have no standings table — only bracke
 
 **Errors:** None — this is a read/compute operation, not a write.
 
-**Edge cases:** Tie-breaking (equal points) is not yet defined — flagged in
-`open-questions.md` Q-005.
+**Edge cases:** Tied points are resolved per `decision-log.md` D-005 — no tie-break in v1;
+tied teams are shown as co-ranked rather than artificially ordered.
 
 **Permissions:** Read-only, any authenticated user.
 

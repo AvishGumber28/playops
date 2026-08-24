@@ -17,7 +17,10 @@ behavior.
 7. **A Sports Secretary's tournament creation requires no separate approval** — their
    appointment by the Caretaker already is the vetting step.
 8. **Standings are always computed from match results, never stored redundantly.**
-9. **A hostel selection is locked for a semester/year**; changing it requires Caretaker
-   approval rather than free self-service switching.
+9. **A hostel selection is locked for a semester/year**; changing it requires approval from
+   the student's **current** hostel's Caretaker (the one releasing them), not the requested
+   hostel's.
 10. **Equipment availability is quantity-based, not binary** — checked against the sum of
     overlapping approved bookings, not a simple taken/free flag like venues.
+11. **League standings have no tie-break rule in v1** — teams with equal points are shown as
+    co-ranked, not artificially ordered.
