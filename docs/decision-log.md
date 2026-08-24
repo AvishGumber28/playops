@@ -42,3 +42,19 @@ data model, and architecture produced in Phases 1–5 — deciding earlier would
 ahead of the problem it needs to solve.
 **Status:** Deferred to Phase 6 (see `technologies-under-consideration.md` for the option
 space, not a decision).
+
+---
+
+### D-004 — Phase 1 MoSCoW classification and evaluation of the five candidate features
+
+**Decision:** Ten features classified as Must Have for v1 (see `requirements.md`), two as
+Should Have, one as Could Have, and the rest — including two of the five originally-candidate
+"innovative" features (Venue Utilization Intelligence, Hostel Sports Performance Index) — as
+Future Scope.
+**Reasoning:** Both deferred candidate features share the same limitation: they need
+accumulated historical data to produce anything meaningful, and the project starts with none.
+The other three candidate features (Conflict Detector, Smart Rescheduling, Eligibility) work
+from day one and were folded into Must Have — the first two merged into a single engine
+rather than built as separate features, since they're detection and resolution halves of the
+same problem.
+**Status:** Adopted, pending review per Phase 1's own stop-and-review gate.
