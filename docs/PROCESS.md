@@ -19,8 +19,8 @@ Then stop before starting the next phase.
 | # | Phase | Status |
 |---|---|---|
 | 0 | Project setup & decision document | Complete |
-| 1 | Freeze & finalize requirements | Complete, pending review |
-| 2 | User roles & permissions | Not started |
+| 1 | Freeze & finalize requirements | Complete |
+| 2 | User roles & permissions | Complete, pending review |
 | 3 | User journeys & workflow design | Not started |
 | 4 | Data model & database design | Not started |
 | 5 | System architecture | Not started |

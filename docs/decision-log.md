@@ -80,3 +80,16 @@ either way — resolved here with stated reasoning rather than left open indefin
 process's own rule against silently deferring decisions.
 
 **Status:** Adopted.
+
+---
+
+### D-006 — Authorization model is scoped capabilities, not a role hierarchy
+
+**Decision:** No role "inherits" another's powers. Every sensitive action checks the specific
+relationship that authorizes it (e.g. "is this user *this* team's captain?"), never a general
+"role rank" comparison.
+**Reasoning:** A hierarchy model risks silently granting powers nobody explicitly decided on
+— e.g. a Caretaker gaining tournament-edit rights just by being "above" a Secretary in some
+rank ordering. Scoped checks make every permission traceable to an explicit rule in
+`roles-permissions.md`.
+**Status:** Adopted.

@@ -11,6 +11,7 @@ gets closed out with a resolution and a pointer to the decision log entry that s
 | Q-004 | Which Caretaker approves a hostel change request — the student's current hostel, the requested one, or both? | Phase 1 | Resolved — see D-005 |
 | Q-005 | What are the tie-breaking rules for league standings when points are equal? | Phase 1 | Resolved — see D-005 |
 | Q-006 | Does replacing a Sports Secretary need any process beyond the Caretaker picking someone new, or should the previous appointment be recorded rather than silently overwritten? | Phase 1 | Resolved — see D-005 |
+| Q-007 | Does team registration need manual Secretary review/rejection on top of the automated hostel-eligibility check, or does passing that check mean the team is automatically registered? | Phase 2 | Open — defaulted to "yes, Secretary can still reject" in `roles-permissions.md`, pending confirmation |
 
 Requirements-level open questions (eligibility edge cases, scoring rules, etc.) belong in
 Phase 1's requirements documents once that phase starts, not here — this file is for
