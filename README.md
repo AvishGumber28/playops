@@ -17,9 +17,10 @@ architecture (Phase 5), and tech stack (Phase 6) all come before any implementat
 
 ```
 docs/       All project documentation - decisions, requirements, architecture, etc.
-frontend/   Empty until Phase 8
-backend/    Empty until Phase 7
+frontend/   Empty until Phase 8 (Next.js + React + TypeScript)
+backend/    Empty until Phase 7 (NestJS + TypeScript + Prisma)
 tests/      Empty until the first vertical slice reaches Phase 9/11
+docker-compose.yml   Local Postgres - run `docker compose up -d` before Phase 7 starts
 ```
 
 ## Start here

@@ -23,8 +23,8 @@ Then stop before starting the next phase.
 | 2 | User roles & permissions | Complete, pending review |
 | 3 | User journeys & workflow design | Complete |
 | 4 | Data model & database design | Complete |
-| 5 | System architecture | Complete, pending review |
-| 6 | Technology & dev environment | Not started |
+| 5 | System architecture | Complete |
+| 6 | Technology & dev environment | Complete, pending review |
 | 7 | Backend foundation | Not started |
 | 8 | Frontend foundation | Not started |
 | 9 | Core system — vertical slices | Not started |
