@@ -1,0 +1,294 @@
+// PlayOps database schema - the executable form of docs/database-design.md.
+//
+// NOT YET VALIDATED: `prisma init`/`validate`/`migrate` all need to fetch
+// Prisma's engine binaries, which failed in this sandbox (see
+// docs/technology-decisions.md for the same issue hit earlier). This file
+// was written by hand, matching database-design.md field-for-field.
+//
+// FIRST THING TO DO once Postgres is running: run
+//   npx prisma validate
+//   npx prisma migrate dev --name init
+// and fix anything that comes up before trusting this file further.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  passwordHash      String
+  name              String
+  hostelId          String?
+  hostel            Hostel?  @relation("HostelMembers", fields: [hostelId], references: [id])
+  hostelSelectedAt  DateTime?
+  hostelLockedUntil DateTime?
+  isSportsAdmin     Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  caretakerOfHostel Hostel? @relation("HostelCaretaker")
+  secretaryOfHostel Hostel? @relation("HostelSecretary")
+
+  captainOfTeams  Team[]       @relation("TeamCaptain")
+  teamMemberships TeamPlayer[]
+
+  hostelChangeRequests   HostelChangeRequest[] @relation("ChangeRequester")
+  reviewedChangeRequests HostelChangeRequest[] @relation("ChangeReviewer")
+
+  requestedVenueBookings VenueBooking[] @relation("VenueRequester")
+  approvedVenueBookings  VenueBooking[] @relation("VenueApprover")
+
+  scorecardsEntered Scorecard[]
+  notifications     Notification[]
+}
+
+model Hostel {
+  id   String @id @default(uuid())
+  name String @unique
+
+  caretakerUserId String? @unique
+  caretaker       User?   @relation("HostelCaretaker", fields: [caretakerUserId], references: [id])
+
+  sportsSecretaryUserId String? @unique
+  sportsSecretary       User?   @relation("HostelSecretary", fields: [sportsSecretaryUserId], references: [id])
+
+  members        User[]                 @relation("HostelMembers")
+  tournaments    Tournament[]
+  teams          Team[]
+  changeRequests HostelChangeRequest[]
+}
+
+model HostelChangeRequest {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation("ChangeRequester", fields: [userId], references: [id])
+  requestedHostelId String
+  requestedHostel   Hostel   @relation(fields: [requestedHostelId], references: [id])
+  status            String   @default("pending") // pending | approved | rejected
+  reviewedById      String?
+  reviewedBy        User?    @relation("ChangeReviewer", fields: [reviewedById], references: [id])
+  createdAt         DateTime @default(now())
+  reviewedAt        DateTime?
+
+  // Business rule 9: reviewedBy must be the student's CURRENT hostel's
+  // caretaker - enforced in application logic, not expressible as a
+  // simple column constraint since it depends on comparing against
+  // user.hostelId at review time, not requestedHostelId.
+}
+
+model Sport {
+  id                String @id @default(uuid())
+  name              String @unique
+  defaultTeamSize   Int?
+  scorecardTemplate String
+
+  tournaments Tournament[]
+  scorecards  Scorecard[]
+}
+
+model Tournament {
+  id                   String   @id @default(uuid())
+  name                 String
+  sportId              String
+  sport                Sport    @relation(fields: [sportId], references: [id])
+  hostelId             String
+  hostel               Hostel   @relation(fields: [hostelId], references: [id])
+  format               String // knockout | league
+  registrationDeadline DateTime
+  status               String   @default("draft") // draft | registration_open | in_progress | completed | cancelled
+  createdById          String
+  createdAt            DateTime @default(now())
+
+  teams   Team[]
+  matches Match[]
+
+  @@index([hostelId])
+  @@index([status])
+}
+
+model Team {
+  id                  String   @id @default(uuid())
+  tournamentId        String
+  tournament          Tournament @relation(fields: [tournamentId], references: [id])
+  name                String
+  captainUserId       String
+  captain             User     @relation("TeamCaptain", fields: [captainUserId], references: [id])
+  hostelId            String
+  hostel              Hostel   @relation(fields: [hostelId], references: [id])
+  status              String   @default("active") // active | withdrawn - business rule 12
+  registrationStatus  String   @default("approved") // approved | rejected - see Q-007 design note below
+  createdAt           DateTime @default(now())
+
+  players        TeamPlayer[]
+  matchesAsTeamA Match[] @relation("TeamA")
+  matchesAsTeamB Match[] @relation("TeamB")
+  matchesWon     Match[] @relation("Winner")
+
+  @@index([tournamentId])
+  @@index([hostelId])
+}
+
+// Design note (Q-007 still open): registrationStatus defaults to
+// "approved" automatically once eligibility passes. If Q-007 resolves
+// "yes, Secretary can still reject," a Secretary flips this field. If it
+// resolves "no," the field simply never changes from its default. Either
+// answer works without a schema migration.
+
+model TeamPlayer {
+  id           String   @id @default(uuid())
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id])
+  tournamentId String // denormalized from Team - see database-design.md for why
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  addedAt      DateTime @default(now())
+
+  @@unique([tournamentId, userId]) // business rule 2
+  @@index([teamId])
+}
+
+model Venue {
+  id          String  @id @default(uuid())
+  name        String
+  location    String?
+  capacity    Int?
+  description String?
+
+  bookings VenueBooking[]
+}
+
+model Equipment {
+  id            String @id @default(uuid())
+  name          String
+  totalQuantity Int
+
+  bookings EquipmentBooking[]
+}
+
+model VenueBooking {
+  id            String    @id @default(uuid())
+  venueId       String
+  venue         Venue     @relation(fields: [venueId], references: [id])
+  date          DateTime  @db.Date
+  startTime     String
+  endTime       String
+  tournamentId  String?
+  matchId       String?   @unique
+  match         Match?    @relation(fields: [matchId], references: [id])
+  requestedById String?
+  requestedBy   User?     @relation("VenueRequester", fields: [requestedById], references: [id])
+  status        String    @default("pending") // pending | approved | rejected
+  source        String // secretary_request | admin_manual
+  approvedById  String?
+  approvedBy    User?     @relation("VenueApprover", fields: [approvedById], references: [id])
+  createdAt     DateTime  @default(now())
+  decidedAt     DateTime?
+
+  @@index([status])
+  // The critical constraint (business rule 3) - a partial unique index -
+  // isn't expressible in schema.prisma syntax directly. It gets added via
+  // a raw-SQL migration once `prisma migrate dev` creates the base table:
+  //   CREATE UNIQUE INDEX venue_booking_no_double_book
+  //     ON "VenueBooking" ("venueId", date, "startTime", "endTime")
+  //     WHERE status = 'approved';
+  // This was already written and verified working against real Postgres
+  // during earlier scaffolding - see db/migrations/001_init.sql from that
+  // session for the exact, tested statement.
+}
+
+model EquipmentBooking {
+  id                String    @id @default(uuid())
+  equipmentId       String
+  equipment         Equipment @relation(fields: [equipmentId], references: [id])
+  quantityRequested Int
+  date              DateTime  @db.Date
+  startTime         String
+  endTime           String
+  tournamentId      String?
+  matchId           String?
+  requestedById     String?
+  status            String    @default("pending")
+  source            String // secretary_request | admin_manual
+  approvedById      String?
+  createdAt         DateTime  @default(now())
+  decidedAt         DateTime?
+}
+
+model Match {
+  id                 String     @id @default(uuid())
+  tournamentId       String
+  tournament         Tournament @relation(fields: [tournamentId], references: [id])
+  round              Int
+  matchNumber        Int
+  teamAId            String?
+  teamA              Team?      @relation("TeamA", fields: [teamAId], references: [id])
+  teamBId            String?
+  teamB              Team?      @relation("TeamB", fields: [teamBId], references: [id])
+  scheduledDate      DateTime?  @db.Date
+  scheduledTime      String?
+  status             String     @default("scheduled") // scheduled | completed | cancelled | postponed | forfeited
+  cancellationReason String?
+  winnerTeamId       String?
+  winner             Team?      @relation("Winner", fields: [winnerTeamId], references: [id])
+  createdAt          DateTime   @default(now())
+
+  venueBooking VenueBooking?
+  scorecard    Scorecard?
+  conflictLogs ConflictLog[]
+
+  @@index([tournamentId])
+  @@index([status])
+}
+
+model Scorecard {
+  id          String   @id @default(uuid())
+  matchId     String   @unique
+  match       Match    @relation(fields: [matchId], references: [id])
+  sportId     String
+  sport       Sport    @relation(fields: [sportId], references: [id])
+  data        Json // sport-specific structured fields - see database-design.md
+  enteredById String
+  enteredBy   User     @relation(fields: [enteredById], references: [id])
+  enteredAt   DateTime @default(now())
+}
+
+model ConflictLog {
+  id           String    @id @default(uuid())
+  type         String // venue | team | player | rest_time
+  tournamentId String?
+  matchId      String?
+  match        Match?    @relation(fields: [matchId], references: [id])
+  detectedAt   DateTime  @default(now())
+  resolution   String    @default("unresolved") // auto_suggested | manually_resolved | unresolved
+  resolvedAt   DateTime?
+}
+
+model Announcement {
+  id           String   @id @default(uuid())
+  hostelId     String?
+  tournamentId String?
+  title        String
+  body         String
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  notifications Notification[]
+}
+
+model Notification {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id])
+  matchId        String?
+  message        String
+  readAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([userId, readAt])
+}
