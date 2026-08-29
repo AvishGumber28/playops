@@ -24,8 +24,8 @@ Then stop before starting the next phase.
 | 3 | User journeys & workflow design | Complete |
 | 4 | Data model & database design | Complete |
 | 5 | System architecture | Complete |
-| 6 | Technology & dev environment | Complete, pending review |
-| 7 | Backend foundation | Not started |
+| 6 | Technology & dev environment | Complete |
+| 7 | Backend foundation | Complete — verified end-to-end: 4/4 test suites, 20/20 tests passing against a real generated Prisma Client and real Postgres |
 | 8 | Frontend foundation | Not started |
 | 9 | Core system — vertical slices | Not started |
 | 10 | Technical/innovative features | Not started |
