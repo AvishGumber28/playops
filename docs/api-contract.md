@@ -48,7 +48,31 @@ Request:
 - 401 → wrong email or password (deliberately the same error either way, so a failed login
   doesn't reveal whether an email is registered)
 
-**Not built yet:** `GET /api/me` (role resolution) doesn't exist yet in this NestJS backend —
-it existed in the earlier pre-phase-process scaffold, but hasn't been rebuilt here. This is
-worth prioritizing early in Phase 9, since the frontend's dashboard-routing logic depends on
-it exactly the same way it did before.
+## GET /api/me
+
+Requires `Authorization: Bearer <token>`.
+
+- 200 →
+```json
+{
+  "id": "...",
+  "email": "...",
+  "name": "...",
+  "hostelId": null,
+  "isSportsAdmin": false,
+  "caretakerOfHostels": [{ "id": "...", "name": "Hostel D" }],
+  "secretaryOfHostels": []
+}
+```
+- 401 → missing or invalid token
+
+This is the actual role-check the frontend uses to decide which dashboard to render —
+`secretaryOfHostels.length > 0` means show the Secretary dashboard, and so on. There is no
+separate "role" field anywhere; it's always derived from these arrays, computed fresh on
+every call (per FR-002 and D-006).
+
+**Known limitation right now:** since Hostel seeding and Secretary appointment don't exist
+yet (that's Phase 9's Hostel module), a fresh real signup will always come back as a plain
+Student — `caretakerOfHostels` and `secretaryOfHostels` will be empty arrays. The endpoint
+and the frontend routing logic are both correct; there's just nothing yet to populate those
+relationships with outside of manual test seeding.
