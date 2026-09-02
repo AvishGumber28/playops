@@ -1,4 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
 /**
@@ -6,16 +8,22 @@ import { PrismaClient } from '@prisma/client';
  * instead of each module creating its own client. Connects when the app
  * starts, disconnects cleanly on shutdown.
  *
- * NOT YET VERIFIED - needs `npx prisma generate` to run first, which
- * needs the same engine binaries that failed to fetch in this sandbox.
- * This will only work once run in an environment with normal internet
- * access (i.e. your machine, not this one).
+ * Prisma 7 requires an explicit driver adapter - it no longer connects
+ * internally from just DATABASE_URL the way Prisma 6 did. See D-009 in
+ * decision-log.md for the full story of what changed and why.
  */
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  constructor(config: ConfigService) {
+    const adapter = new PrismaPg({
+      connectionString: config.get<string>('DATABASE_URL'),
+    });
+    super({ adapter });
+  }
+
   async onModuleInit() {
     await this.$connect();
   }
