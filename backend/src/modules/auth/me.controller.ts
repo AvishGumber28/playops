@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  NotFoundException,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, NotFoundException, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
@@ -42,11 +36,11 @@ export class MeController {
     const [caretakerOfHostels, secretaryOfHostels] = await Promise.all([
       this.prisma.hostel.findMany({
         where: { caretakerUserId: user.id },
-        select: { id: true, name: true },
+        select: { id: true, code: true, name: true },
       }),
       this.prisma.hostel.findMany({
         where: { sportsSecretaryUserId: user.id },
-        select: { id: true, name: true },
+        select: { id: true, code: true, name: true },
       }),
     ]);
 

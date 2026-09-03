@@ -59,6 +59,7 @@ export interface LoginResponse {
 
 export interface HostelRef {
   id: string;
+  code: string;
   name: string;
 }
 

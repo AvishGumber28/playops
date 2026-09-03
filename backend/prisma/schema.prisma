@@ -48,6 +48,7 @@ model User {
 
 model Hostel {
   id   String @id @default(uuid())
+  code String @unique
   name String @unique
 
   caretakerUserId String? @unique
