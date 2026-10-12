@@ -1,79 +1,75 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { ApiError } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { LoginHeroPanel } from '@/components/login/login-hero-panel';
+import { LoginFormCard, type LoginSubmitValues } from '@/components/login/login-form-card';
 
+// Redesigned login screen (see docs/api-contract.md for the real
+// POST /api/auth/login this calls via useAuth().login()).
+//
+// The role tab IS now enforced (previously cosmetic-only - see
+// role-selector.tsx's comment, now stale) - but not by checking the
+// email string against any hardcoded list. Real role resolution is
+// still always computed server-side from Hostel relationships / the
+// isSportsAdmin flag (FR-002/D-006): a login only goes through if
+// /api/me's caretakerOfHostels/secretaryOfHostels/isSportsAdmin actually
+// matches the tab picked. Each tab requires an EXACT match, including
+// Student - a Caretaker, Secretary, or Admin account can't log in via
+// Student either, they have to use their own tab. Credentials being
+// correct isn't enough on its own if the tab claims a relationship that
+// account doesn't hold.
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await login(email, password);
-      router.push('/dashboard');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
-    } finally {
-      setBusy(false);
+  async function handleSubmit({ role, email, password }: LoginSubmitValues) {
+    const me = await login(email, password); // throws ApiError on wrong credentials
+
+    if (!me) {
+      throw new Error('Could not load your account. Please try again.');
     }
+
+    const isCaretaker = me.caretakerOfHostels.length > 0;
+    const isSecretary = me.secretaryOfHostels.length > 0;
+    const isAdmin = me.isSportsAdmin;
+
+    if (role === 'student' && (isCaretaker || isSecretary || isAdmin)) {
+      logout();
+      const actualTab = isCaretaker ? 'Caretaker' : isSecretary ? 'Secretary' : 'Admin';
+      throw new Error(`This account is registered as a ${actualTab}. Select ${actualTab} above and try again.`);
+    }
+
+    if (role === 'caretaker' && !isCaretaker) {
+      logout();
+      throw new Error(
+        "This account isn't registered as a Caretaker. Select Student and try again.",
+      );
+    }
+
+    if (role === 'secretary' && !isSecretary) {
+      logout();
+      throw new Error(
+        "This account hasn't been appointed as a Secretary by a Caretaker yet. Select Student and try again.",
+      );
+    }
+
+    if (role === 'admin' && !isAdmin) {
+      logout();
+      throw new Error(
+        "This account isn't registered with the Sports Department. Select Student and try again.",
+      );
+    }
+
+    router.push('/dashboard');
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">PlayOps</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            No account?{' '}
-            <Link href="/signup" className="underline underline-offset-4 hover:text-primary">
-              Sign up
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+    <main className="flex min-h-screen w-full flex-1 flex-col bg-playops-green md:flex-row">
+      <LoginHeroPanel />
+      <div className="flex flex-1 items-center justify-center p-6 md:p-10">
+        <LoginFormCard onSubmit={handleSubmit} />
+      </div>
     </main>
   );
 }

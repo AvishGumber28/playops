@@ -27,6 +27,9 @@ scoped-permissions design.
 | hostelSelectedAt | timestamp | yes |
 | hostelLockedUntil | timestamp | yes |
 | isSportsAdmin | boolean | no, default false |
+| rollNumber | text | yes — self-reported at signup (D-012) |
+| photoUrl | text | yes — a link to an image, not an uploaded file (D-012) |
+| secretaryWelcomeShown | boolean | no, default false (D-013) |
 | createdAt | timestamp | no |
 
 **Primary key:** id
@@ -35,7 +38,12 @@ scoped-permissions design.
 request/approve VenueBookings · can enter Scorecards · referenced by Hostel as caretaker/secretary
 **Unique constraints:** email
 **Indexes:** email (login lookups)
-**Lifecycle:** created at signup; no deletion path in v1 (deactivation is Future Scope)
+**Lifecycle:** created at signup; no deletion path in v1 (deactivation is Future Scope).
+`rollNumber`/`photoUrl` (D-012) are filled in by the account's own owner, same as name/email -
+never written on someone else's behalf (e.g. a Caretaker appointing them to something).
+`secretaryWelcomeShown` (D-013) flips to true once a newly-appointed Secretary's own dashboard
+has shown them the one-time congratulations banner - see `GET /api/me`'s `showSecretaryWelcome`
+in api-contract.md for how it's actually surfaced.
 
 ---
 
@@ -51,15 +59,28 @@ Caretaker and Secretary capabilities.
 | name | text | no |
 | caretakerUserId | uuid | yes — until seeded |
 | sportsSecretaryUserId | uuid | yes — until appointed |
+| proctorUserId | uuid | yes — until appointed (D-011) |
+| gymSecretaryUserId | uuid | yes — until appointed (D-011) |
+| messSecretaryUserId | uuid | yes — until appointed (D-011) |
 
 **Primary key:** id
-**Foreign keys:** caretakerUserId → User, sportsSecretaryUserId → User
+**Foreign keys:** caretakerUserId → User, sportsSecretaryUserId → User, proctorUserId → User,
+gymSecretaryUserId → User, messSecretaryUserId → User
 **Relationships:** has many Users (members), Tournaments, Teams, HostelChangeRequests
-**Unique constraints:** name · caretakerUserId · sportsSecretaryUserId (each person can hold
-at most one hostel's Caretaker or Secretary capability — enforced by the column itself being
-unique, not just checked in code)
+**Unique constraints:** name · caretakerUserId · sportsSecretaryUserId · proctorUserId ·
+gymSecretaryUserId · messSecretaryUserId (each person can hold at most one hostel's worth of
+any single one of these titles — enforced by each column itself being unique, not just
+checked in code)
 **Indexes:** caretakerUserId, sportsSecretaryUserId (both looked up on every `/me` role
-resolution, per FR-002)
+resolution, per FR-002). The three D-011 columns aren't part of role resolution — they're
+looked up only when a Caretaker views their own hostel's admin panel, not on every request —
+so no index was added for them.
+
+**Note on the three D-011 columns (Proctor/Gym Secretary/Mess Secretary):** appointed exactly
+like Sports Secretary (same eligibility rule, same "no history on replacement"), but
+deliberately excluded from `/api/me` and role resolution — holding one of these titles never
+changes a user's dashboard. PlayOps's scope is sports management; these three are
+administrative record-keeping for the Caretaker, not real system capabilities.
 **Lifecycle:** seeded at setup with dummy Caretakers (per the earlier bootstrap decision);
 appointments change via Caretaker action, with no history kept (D-005)
 

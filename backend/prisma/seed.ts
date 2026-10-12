@@ -31,6 +31,9 @@ const SPORTS = [
   { name: 'Basketball', defaultTeamSize: 5, scorecardTemplate: 'basketball' },
 ];
 
+// D-019: the fixed 3-ground catalog for FR-008's venue booking.
+const VENUES = ['Cricket Ground', 'Football Ground', 'Basketball Court'];
+
 async function main() {
   const passwordHash = await bcrypt.hash(DUMMY_PASSWORD, 10);
 
@@ -69,6 +72,15 @@ async function main() {
       create: sport,
     });
     console.log(`Seeded sport: ${sport.name}`);
+  }
+
+  for (const name of VENUES) {
+    await prisma.venue.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+    console.log(`Seeded venue: ${name}`);
   }
 
   console.log(`\nAll caretaker accounts share the password: ${DUMMY_PASSWORD}`);

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -13,6 +14,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // D-030: match-day reminders (NotificationsModule's MatchReminderService).
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     HostelModule,

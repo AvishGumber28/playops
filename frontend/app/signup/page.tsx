@@ -14,6 +14,9 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // D-012: self-reported, optional - a signup with neither is still valid.
+  const [rollNumber, setRollNumber] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -23,7 +26,13 @@ export default function SignupPage() {
     setError(null);
     setBusy(true);
     try {
-      await api.signup({ name, email, password });
+      await api.signup({
+        name,
+        email,
+        password,
+        rollNumber: rollNumber || undefined,
+        photoUrl: photoUrl || undefined,
+      });
       setSuccess(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
@@ -86,6 +95,32 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rollNumber">
+                Roll number <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="rollNumber"
+                value={rollNumber}
+                onChange={(e) => setRollNumber(e.target.value)}
+                placeholder="2022CSB1042"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="photoUrl">
+                Photo URL <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="photoUrl"
+                type="url"
+                value={photoUrl}
+                onChange={(e) => setPhotoUrl(e.target.value)}
+                placeholder="https://example.com/your-photo.jpg"
+              />
+              <p className="text-xs text-muted-foreground">
+                A link to an image — there&apos;s no photo upload yet, just paste a URL.
+              </p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={busy}>

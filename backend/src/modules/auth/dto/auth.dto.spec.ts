@@ -42,6 +42,19 @@ describe('SignupDto', () => {
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
   });
+
+  // D-012: self-reported, optional.
+  it('accepts valid input with rollNumber and photoUrl included', async () => {
+    const dto = plainToInstance(SignupDto, {
+      name: 'Riya',
+      email: 'riya@college.edu',
+      password: 'password123',
+      rollNumber: '2022CSB1042',
+      photoUrl: 'https://example.com/riya.jpg',
+    });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+  });
 });
 
 describe('LoginDto', () => {

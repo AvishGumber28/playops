@@ -27,9 +27,9 @@ Then stop before starting the next phase.
 | 6 | Technology & dev environment | Complete |
 | 7 | Backend foundation | Complete — verified end-to-end: 4/4 test suites, 20/20 tests passing against a real generated Prisma Client and real Postgres |
 | 8 | Frontend foundation | Complete — Next.js + TypeScript + Tailwind/shadcn scaffolded, real login/signup wired to the backend, GET /api/me built (pulled forward from Phase 9), role-based dashboard routing verified with a clean build and all 5 routes serving correctly |
-| 9 | Core system — vertical slices | Not started |
-| 10 | Technical/innovative features | Not started |
-| 11 | Testing | Not started |
+| 9 | Core system — vertical slices | Complete — all 12 functional requirements (FR-001–FR-012) built, tested, and live: identity/hostel placement, Secretary appointment, tournament creation, team registration, fixtures, venue & equipment booking, results/scorecards, standings, and announcements/notifications |
+| 10 | Technical/innovative features | Complete — the conflict detection & rescheduling engine (FR-009) was built as slice 9 within the same continuous vertical-slices sequence, not as a separately-staged effort: team/venue clash detection, auto-reschedule search on cancellation, and knockout winner auto-advancement |
+| 11 | Testing | Not started — unit/integration tests exist per-slice (backend: 205/205 passing); no dedicated cross-cutting test phase has been run yet |
 | 12 | Security | Not started |
 | 13 | Performance & data integrity | Not started |
 | 14 | Realistic data & demo environment | Not started |

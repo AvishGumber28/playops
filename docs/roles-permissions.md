@@ -36,7 +36,7 @@ is: for every sensitive action, check the *specific* relationship that authorize
 | Create team | Y (becomes Captain) | — | — | — | — |
 | Edit (add/remove players) | — | Y (own team) | — | — | — |
 | Withdraw team | — | Y (own team) | — | — | — |
-| Reject registration beyond auto-check | — | — | **Y — see Q-007** | — | — |
+| Reject registration beyond auto-check | — | — | **Y — see Q-007** | — | — | 
 
 ### Fixtures
 | Action | Student | Captain | Secretary | Caretaker | Sports Dept |
@@ -78,6 +78,11 @@ is: for every sensitive action, check the *specific* relationship that authorize
 |---|---|---|---|---|---|
 | View current Secretary | Y | Y | Y | Y | Y |
 | Appoint / replace | — | — | — | Y (own hostel only) | — |
+
+**D-011 addendum:** the Caretaker's dashboard appoints three more hostel positions the same
+way — Proctor, Gym Secretary, Mess Secretary — but none of them grant any capability in this
+matrix. They're administrative record-keeping only; appointing one never changes the
+appointee's permissions or dashboard, unlike Sports Secretary above.
 
 ### Announcements
 | Action | Student | Captain | Secretary | Caretaker | Sports Dept |

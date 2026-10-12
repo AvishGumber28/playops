@@ -28,10 +28,28 @@ model User {
   hostelSelectedAt  DateTime?
   hostelLockedUntil DateTime?
   isSportsAdmin     Boolean  @default(false)
+  // D-012: self-reported at signup, same as name/email - never written by
+  // anyone else (e.g. a Caretaker appointing this person to something).
+  // photoUrl is a link to an image, not an uploaded file - no file
+  // storage exists in this project.
+  rollNumber        String?
+  photoUrl          String?
+  // D-013: flips true once this account's dashboard has shown the
+  // one-time "you've been appointed Secretary" congratulations banner -
+  // an ever-boolean, not tied to any specific appointment (see D-013's
+  // known-limitation note).
+  secretaryWelcomeShown Boolean @default(false)
   createdAt         DateTime @default(now())
 
   caretakerOfHostel Hostel? @relation("HostelCaretaker")
   secretaryOfHostel Hostel? @relation("HostelSecretary")
+
+  // D-011: administrative record-keeping only - holding one of these does
+  // NOT feed into role resolution (FR-002) or dashboard routing, unlike
+  // secretaryOfHostel above.
+  proctorOfHostel       Hostel? @relation("HostelProctor")
+  gymSecretaryOfHostel  Hostel? @relation("HostelGymSecretary")
+  messSecretaryOfHostel Hostel? @relation("HostelMessSecretary")
 
   captainOfTeams  Team[]       @relation("TeamCaptain")
   teamMemberships TeamPlayer[]
@@ -41,6 +59,9 @@ model User {
 
   requestedVenueBookings VenueBooking[] @relation("VenueRequester")
   approvedVenueBookings  VenueBooking[] @relation("VenueApprover")
+
+  requestedEquipmentBookings EquipmentBooking[] @relation("EquipmentRequester")
+  approvedEquipmentBookings  EquipmentBooking[] @relation("EquipmentApprover")
 
   scorecardsEntered Scorecard[]
   notifications     Notification[]
@@ -56,6 +77,18 @@ model Hostel {
 
   sportsSecretaryUserId String? @unique
   sportsSecretary       User?   @relation("HostelSecretary", fields: [sportsSecretaryUserId], references: [id])
+
+  // D-011: same appointment mechanics as sportsSecretaryUserId above
+  // (Caretaker-appointed, unique, no history on replacement), but never
+  // read by role resolution - purely administrative record-keeping.
+  proctorUserId String? @unique
+  proctor       User?   @relation("HostelProctor", fields: [proctorUserId], references: [id])
+
+  gymSecretaryUserId String? @unique
+  gymSecretary       User?   @relation("HostelGymSecretary", fields: [gymSecretaryUserId], references: [id])
+
+  messSecretaryUserId String? @unique
+  messSecretary       User?   @relation("HostelMessSecretary", fields: [messSecretaryUserId], references: [id])
 
   members        User[]                 @relation("HostelMembers")
   tournaments    Tournament[]
@@ -101,6 +134,7 @@ model Tournament {
   format               String // knockout | league
   registrationDeadline DateTime
   status               String   @default("draft") // draft | registration_open | in_progress | completed | cancelled
+  cancellationReason   String?
   createdById          String
   createdAt            DateTime @default(now())
 
@@ -154,7 +188,7 @@ model TeamPlayer {
 
 model Venue {
   id          String  @id @default(uuid())
-  name        String
+  name        String  @unique // D-019: fixed 3-ground catalog, seeded by name
   location    String?
   capacity    Int?
   description String?
@@ -162,10 +196,16 @@ model Venue {
   bookings VenueBooking[]
 }
 
+// D-019: availableQuantity is a maintained column (decremented on
+// approve, incremented on return, recomputed on an edit), not computed
+// from bookings - see EquipmentBooking's comment for why the original
+// "SUM over overlapping approved bookings" shape (business rule 10)
+// doesn't apply to how this actually got built.
 model Equipment {
-  id            String @id @default(uuid())
-  name          String
-  totalQuantity Int
+  id                String @id @default(uuid())
+  name              String
+  totalQuantity     Int
+  availableQuantity Int
 
   bookings EquipmentBooking[]
 }
@@ -183,38 +223,45 @@ model VenueBooking {
   requestedById String?
   requestedBy   User?     @relation("VenueRequester", fields: [requestedById], references: [id])
   status        String    @default("pending") // pending | approved | rejected
-  source        String // secretary_request | admin_manual
+  source        String // student_request | secretary_request | admin_manual (D-019: students can request too, not just Secretary)
   approvedById  String?
   approvedBy    User?     @relation("VenueApprover", fields: [approvedById], references: [id])
   createdAt     DateTime  @default(now())
   decidedAt     DateTime?
 
   @@index([status])
-  // The critical constraint (business rule 3) - a partial unique index -
-  // isn't expressible in schema.prisma syntax directly. It gets added via
-  // a raw-SQL migration once `prisma migrate dev` creates the base table:
+  // Business rule 3 - "at most one approved booking per slot" - enforced
+  // by a partial unique index, added via raw SQL in the D-019 migration
+  // (Prisma's schema DSL can't express a conditional/WHERE index):
   //   CREATE UNIQUE INDEX venue_booking_no_double_book
   //     ON "VenueBooking" ("venueId", date, "startTime", "endTime")
   //     WHERE status = 'approved';
-  // This was already written and verified working against real Postgres
-  // during earlier scaffolding - see db/migrations/001_init.sql from that
-  // session for the exact, tested statement.
 }
 
+// D-019: no date/startTime/endTime - unlike Venue, equipment here isn't
+// a time-slot reservation, it's "checked out until someone marks it
+// returned" (matches the actually-built and reviewed UI - a quantity
+// request, an Admin approval, and a later return, with no date/time
+// picker anywhere in that flow). The columns stay on the table
+// (nullable) rather than being dropped, since Venue's identical shape
+// is still exactly right and dropping/re-adding them later would be
+// more disruptive than just not using them here.
 model EquipmentBooking {
   id                String    @id @default(uuid())
   equipmentId       String
   equipment         Equipment @relation(fields: [equipmentId], references: [id])
   quantityRequested Int
-  date              DateTime  @db.Date
-  startTime         String
-  endTime           String
+  date              DateTime? @db.Date
+  startTime         String?
+  endTime           String?
   tournamentId      String?
   matchId           String?
   requestedById     String?
-  status            String    @default("pending")
-  source            String // secretary_request | admin_manual
+  requestedBy       User?     @relation("EquipmentRequester", fields: [requestedById], references: [id])
+  status            String    @default("pending") // pending | checked_out | rejected | returned
+  source            String // student_request | secretary_request | admin_manual
   approvedById      String?
+  approvedBy        User?     @relation("EquipmentApprover", fields: [approvedById], references: [id])
   createdAt         DateTime  @default(now())
   decidedAt         DateTime?
 }

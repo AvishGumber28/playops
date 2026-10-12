@@ -17,7 +17,13 @@ interface MockUser {
 }
 
 interface CreateArgs {
-  data: { email: string; passwordHash: string; name: string };
+  data: {
+    email: string;
+    passwordHash: string;
+    name: string;
+    rollNumber?: string;
+    photoUrl?: string;
+  };
   select?: unknown;
 }
 
@@ -95,6 +101,53 @@ describe('AuthService', () => {
       expect(
         await bcrypt.compare('password123', createArgs.data.passwordHash),
       ).toBe(true);
+    });
+
+    // D-012: self-reported, optional.
+    it('passes rollNumber and photoUrl through when provided', async () => {
+      findUnique.mockResolvedValue(null);
+      create.mockImplementation((args) =>
+        Promise.resolve({
+          id: 'new-user',
+          email: args.data.email,
+          name: args.data.name,
+        }),
+      );
+
+      await service.signup({
+        name: 'Riya',
+        email: 'riya@testcollege.edu',
+        password: 'password123',
+        rollNumber: '2022CSB1042',
+        photoUrl: 'https://example.com/riya.jpg',
+      });
+
+      const createArgs = create.mock.calls[0][0];
+      expect(createArgs.data.rollNumber).toBe('2022CSB1042');
+      expect(createArgs.data.photoUrl).toBe('https://example.com/riya.jpg');
+    });
+
+    it('signs up fine with neither rollNumber nor photoUrl (both optional)', async () => {
+      findUnique.mockResolvedValue(null);
+      create.mockImplementation((args) =>
+        Promise.resolve({
+          id: 'new-user',
+          email: args.data.email,
+          name: args.data.name,
+        }),
+      );
+
+      await expect(
+        service.signup({
+          name: 'Riya',
+          email: 'riya@testcollege.edu',
+          password: 'password123',
+        }),
+      ).resolves.toBeDefined();
+
+      const createArgs = create.mock.calls[0][0];
+      expect(createArgs.data.rollNumber).toBeUndefined();
+      expect(createArgs.data.photoUrl).toBeUndefined();
     });
   });
 

@@ -1,4 +1,12 @@
-import { Controller, Get, NotFoundException, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request';
@@ -26,6 +34,7 @@ export class MeController {
         name: true,
         hostelId: true,
         isSportsAdmin: true,
+        secretaryWelcomeShown: true,
       },
     });
 
@@ -33,7 +42,13 @@ export class MeController {
       throw new NotFoundException('User not found.');
     }
 
-    const [caretakerOfHostels, secretaryOfHostels] = await Promise.all([
+    const [hostel, caretakerOfHostels, secretaryOfHostels] = await Promise.all([
+      user.hostelId
+        ? this.prisma.hostel.findUnique({
+            where: { id: user.hostelId },
+            select: { id: true, code: true, name: true },
+          })
+        : null,
       this.prisma.hostel.findMany({
         where: { caretakerUserId: user.id },
         select: { id: true, code: true, name: true },
@@ -44,10 +59,37 @@ export class MeController {
       }),
     ]);
 
+    // D-013: computed, not the raw column - true exactly once, the first
+    // time a newly-appointed Secretary's own dashboard loads.
+    const showSecretaryWelcome =
+      secretaryOfHostels.length > 0 && !user.secretaryWelcomeShown;
+
+    const { secretaryWelcomeShown, ...publicUser } = user;
+    void secretaryWelcomeShown; // intentionally not part of the response - see above
+
     return {
-      ...user,
+      ...publicUser,
+      hostel,
       caretakerOfHostels,
       secretaryOfHostels,
+      showSecretaryWelcome,
     };
+  }
+
+  // D-013: fire-and-forget from the Secretary dashboard, once it's shown
+  // the congratulations banner - flips the flag so it never shows again
+  // for this account (known limitation: this is an ever-boolean, not
+  // tied to any specific appointment - see decision-log.md D-013).
+  @Post('acknowledge-secretary-welcome')
+  @UseGuards(JwtAuthGuard)
+  async acknowledgeSecretaryWelcome(@Req() req: AuthenticatedRequest) {
+    if (!req.userId) {
+      throw new UnauthorizedException('Missing authorization token.');
+    }
+    await this.prisma.user.update({
+      where: { id: req.userId },
+      data: { secretaryWelcomeShown: true },
+    });
+    return { acknowledged: true };
   }
 }

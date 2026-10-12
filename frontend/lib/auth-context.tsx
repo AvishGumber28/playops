@@ -9,8 +9,14 @@ interface AuthContextValue {
   token: string | null;
   me: MeResponse | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  // Returns the freshly-loaded profile (or null if it couldn't be
+  // loaded) - callers that need to act on it right away (e.g. the login
+  // page's role-tab check) can't just read `me` from context afterward,
+  // since a setState scheduled inside here isn't visible in the same
+  // closure until the next render.
+  login: (email: string, password: string) => Promise<MeResponse | null>;
   logout: () => void;
+  refreshMe: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -22,15 +28,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // so route guards must wait for this to resolve before deciding to redirect.
   const [loading, setLoading] = useState(true);
 
-  const loadMe = useCallback(async (t: string) => {
+  const loadMe = useCallback(async (t: string): Promise<MeResponse | null> => {
     try {
       const profile = await api.me(t);
       setMe(profile);
+      return profile;
     } catch {
       // Token was rejected (expired/invalid) - clear everything and force re-login.
       localStorage.removeItem(TOKEN_STORAGE_KEY);
       setToken(null);
       setMe(null);
+      return null;
     }
   }, []);
 
@@ -58,8 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
       setToken(newToken);
       setLoading(true);
-      await loadMe(newToken);
+      const profile = await loadMe(newToken);
       setLoading(false);
+      return profile;
     },
     [loadMe],
   );
@@ -70,8 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMe(null);
   }, []);
 
+  // Re-fetches /api/me with the current token, without a full page reload -
+  // needed after actions that change something /api/me reports (e.g.
+  // selecting a hostel for the first time).
+  const refreshMe = useCallback(async () => {
+    if (token) await loadMe(token);
+  }, [token, loadMe]);
+
   return (
-    <AuthContext.Provider value={{ token, me, loading, login, logout }}>
+    <AuthContext.Provider value={{ token, me, loading, login, logout, refreshMe }}>
       {children}
     </AuthContext.Provider>
   );

@@ -196,7 +196,7 @@ tournament's chosen format (FR-005).
 
 ## FR-008 — Venue & Equipment Booking
 
-**Who:** Sports Secretary (requests) · Sports Department (approves, rejects, or books a slot
+**Who:** Sports Secx    retary (requests) · Sports Department (approves, rejects, or books a slot
 directly for an offline arrangement).
 
 **What they can do:** Request a venue or equipment for an exact date and time slot.

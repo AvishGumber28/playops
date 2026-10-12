@@ -3,16 +3,13 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/button';
-import {
-  StudentDashboard,
-  CaretakerDashboard,
-  SecretaryDashboard,
-  SportsAdminDashboard,
-} from '@/components/dashboards';
+import { StudentDashboard } from '@/components/student/student-dashboard';
+import { CaretakerDashboard } from '@/components/caretaker/caretaker-dashboard';
+import { SecretaryDashboard } from '@/components/secretary/secretary-dashboard';
+import { AdminDashboard } from '@/components/admin/admin-dashboard';
 
 export default function DashboardPage() {
-  const { token, me, loading, logout } = useAuth();
+  const { token, me, loading } = useAuth();
   const router = useRouter();
 
   // Route protection: an unauthenticated visitor gets sent to login, but
@@ -35,22 +32,20 @@ export default function DashboardPage() {
   // This is the routing decision described in Phase 8: pick a dashboard
   // shell from what /api/me resolved, never from a stored "role" field.
   // A user could in principle match more than one - v1 just shows the
-  // first that applies.
-  let DashboardContent;
-  if (me.secretaryOfHostels.length > 0) DashboardContent = <SecretaryDashboard me={me} />;
-  else if (me.caretakerOfHostels.length > 0) DashboardContent = <CaretakerDashboard me={me} />;
-  else if (me.isSportsAdmin) DashboardContent = <SportsAdminDashboard me={me} />;
-  else DashboardContent = <StudentDashboard me={me} />;
-
-  return (
-    <div>
-      <nav className="flex items-center justify-between border-b px-8 py-4">
-        <span className="font-bold text-lg">PlayOps</span>
-        <Button variant="ghost" onClick={logout}>
-          Sign out
-        </Button>
-      </nav>
-      <main className="mx-auto max-w-2xl px-6 py-10">{DashboardContent}</main>
-    </div>
-  );
+  // first that applies, same priority order as before
+  // (Secretary > Caretaker > SportsAdmin > Student).
+  //
+  // Every role now owns its own full-page shell (a dark navbar with its
+  // own nav destinations - see components/secretary/, /caretaker/,
+  // /admin/, /student/) - there's no generic fallback shell left.
+  if (me.secretaryOfHostels.length > 0) {
+    return <SecretaryDashboard me={me} />;
+  }
+  if (me.caretakerOfHostels.length > 0) {
+    return <CaretakerDashboard me={me} />;
+  }
+  if (me.isSportsAdmin) {
+    return <AdminDashboard me={me} />;
+  }
+  return <StudentDashboard me={me} />;
 }
