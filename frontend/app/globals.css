@@ -64,8 +64,8 @@
      preference (see the removed .playops-force-light class this
      replaced: mixing fixed brand colors with the auto-switching tokens
      above is what broke contrast under system dark mode last time). */
-  --color-playops-dark-bg: #0b0f1a;
-  --color-playops-dark-surface: #141b2d;
+  --color-playops-dark-bg: #0a140d;
+  --color-playops-dark-surface: #0d1c13;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -96,5 +96,99 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Chrome/Edge paint autofilled inputs with their own light background,
+   ignoring any background-color set in CSS - which made icons/text on our
+   dark inputs (login, etc.) invisible once a field got autofilled. This
+   keeps autofilled fields matching the app's dark input style instead. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: white;
+  -webkit-box-shadow: 0 0 0px 1000px #0d1c13 inset;
+  box-shadow: 0 0 0px 1000px #0d1c13 inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Every card/panel site-wide shares this one surface class - give it a
+   shaded gradient (lighter green fading to near-black) instead of a flat
+   fill, so it reads as part of the pitch scene instead of a plain block.
+   background-image stacks on top of the class's own background-color,
+   so this doesn't need to touch any component file. Scoped to this class
+   only (not playops-dark-bg) - that one also backs the page-root photo
+   background, which this must not override. */
+.bg-playops-dark-surface {
+  background-image: linear-gradient(to right, #14301f, #060d08);
+}
+
+/* Light theme (opt-in via the toggle next to each navbar's notification
+   bell - lib/theme-context.tsx). The app's components hardcode dark-mode
+   utility classes directly (text-white, border-white/10, etc.) rather
+   than theme-aware tokens, so this flips those same classes globally
+   instead of rewriting every component - fast, but a handful of spots
+   (hover states, color-tinted badge text calibrated for a dark backdrop)
+   may still need small follow-up tweaks once this is actually seen in use. */
+html[data-theme='light'] .bg-playops-dark-bg {
+  background-color: #f3f6f4;
+  background-image: none;
+}
+html[data-theme='light'] .bg-playops-dark-surface {
+  background-color: #ffffff;
+  background-image: none;
+}
+html[data-theme='light'] .text-white {
+  color: #0f1f16;
+}
+html[data-theme='light'] .text-white\/80 {
+  color: #1f2e25;
+}
+html[data-theme='light'] .text-white\/70 {
+  color: #33453a;
+}
+html[data-theme='light'] .text-white\/60 {
+  color: #4b5c51;
+}
+html[data-theme='light'] .text-white\/50 {
+  color: #64766b;
+}
+html[data-theme='light'] .text-white\/40 {
+  color: #7c8c82;
+}
+html[data-theme='light'] .text-white\/30 {
+  color: #97a59c;
+}
+html[data-theme='light'] .border-white\/5 {
+  border-color: rgb(0 0 0 / 0.05);
+}
+html[data-theme='light'] .border-white\/10 {
+  border-color: rgb(0 0 0 / 0.1);
+}
+html[data-theme='light'] .border-white\/15 {
+  border-color: rgb(0 0 0 / 0.15);
+}
+html[data-theme='light'] .border-white\/20 {
+  border-color: rgb(0 0 0 / 0.2);
+}
+html[data-theme='light'] .bg-white\/5 {
+  background-color: rgb(0 0 0 / 0.04);
+}
+html[data-theme='light'] .bg-white\/10 {
+  background-color: rgb(0 0 0 / 0.06);
+}
+html[data-theme='light'] .bg-white\/30 {
+  background-color: rgb(0 0 0 / 0.12);
+}
+html[data-theme='light'] .bg-white\/\[0\.02\] {
+  background-color: rgb(0 0 0 / 0.03);
+}
+html[data-theme='light'] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(0 0 0 / 0.08);
+}
+html[data-theme='light'] .hover\:bg-white\/10:hover {
+  background-color: rgb(0 0 0 / 0.06);
+}
+html[data-theme='light'] .hover\:text-white:hover {
+  color: #0f1f16;
 }
 

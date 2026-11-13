@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { LoginHeroPanel } from '@/components/login/login-hero-panel';
@@ -65,10 +66,29 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen w-full flex-1 flex-col bg-playops-green md:flex-row">
-      <LoginHeroPanel />
-      <div className="flex flex-1 items-center justify-center p-6 md:p-10">
-        <LoginFormCard onSubmit={handleSubmit} />
+    <main className="relative flex min-h-screen w-full flex-1 flex-col overflow-hidden bg-black md:flex-row">
+      <Image
+        src="/images/login-stadium-bg-v3.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        // This composition already clusters all three players on the left
+        // half, with clean empty pitch on the right - object-left keeps
+        // that cluster anchored instead of a centered crop clipping it.
+        className="object-cover object-left"
+      />
+      {/* One uniform scrim across the whole photo - just enough for text
+          contrast - rather than a separate treatment behind the card. The
+          same background keeps running underneath the (translucent,
+          blurred) card, not a different panel. */}
+      <div className="absolute inset-0 bg-black/45" />
+
+      <div className="relative z-10 flex w-full flex-1 flex-col md:flex-row">
+        <LoginHeroPanel />
+        <div className="flex flex-1 items-center justify-center p-6 md:p-10">
+          <LoginFormCard onSubmit={handleSubmit} />
+        </div>
       </div>
     </main>
   );

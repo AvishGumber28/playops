@@ -1,10 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { ThemeToggle } from '@/components/theme-toggle';
 import type { MeResponse } from '@/lib/api';
 
 // Mirrors SecretaryNavbar/CaretakerNavbar's shape - Sports Admin isn't
@@ -32,6 +34,7 @@ export function AdminNavbar({ me }: { me: MeResponse }) {
   return (
     <nav className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-playops-dark-bg px-6 py-3 text-white">
       <div className="flex items-center gap-3">
+        <Image src="/images/playops-logo-v4.png" alt="PlayOps" width={24} height={24} className="h-6 w-6 rounded" />
         <span className="text-sm font-extrabold tracking-tight">PLAYOPS</span>
         <span className="text-white/30">/</span>
         <span className="rounded bg-white/10 px-2 py-1 text-xs font-medium">Sports Department</span>
@@ -53,6 +56,7 @@ export function AdminNavbar({ me }: { me: MeResponse }) {
       </div>
 
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <NotificationBell />
         <div className="text-right text-xs leading-tight">
           <p className="font-medium">{me.name}</p>

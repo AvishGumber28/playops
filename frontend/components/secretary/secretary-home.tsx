@@ -7,17 +7,63 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { NotificationsCard } from '@/components/notifications/notifications-card';
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent: string;
+}) {
   return (
     <Card className="border-white/10 bg-playops-dark-surface">
       <CardContent className="py-4">
         <p className="text-[10px] font-bold uppercase tracking-wide text-white/50">{label}</p>
-        <p className="mt-1 text-xl font-bold text-white">{value}</p>
+        <p className={`mt-1 text-xl font-bold ${accent}`}>{value}</p>
         {hint && <p className="mt-0.5 text-[10px] text-white/40">{hint}</p>}
       </CardContent>
     </Card>
   );
 }
+
+const STATUS_STYLE: Record<
+  string,
+  { dot: string; badge: string; action: string; actionLabel: string }
+> = {
+  registration_open: {
+    dot: 'bg-amber-400',
+    badge: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+    action: 'text-amber-300 hover:text-amber-200',
+    actionLabel: 'Manage Registrations →',
+  },
+  in_progress: {
+    dot: 'bg-emerald-400',
+    badge: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+    action: 'text-emerald-300 hover:text-emerald-200',
+    actionLabel: 'View Fixtures →',
+  },
+  completed: {
+    dot: 'bg-sky-400',
+    badge: 'border-sky-400/30 bg-sky-400/10 text-sky-300',
+    action: 'text-sky-300 hover:text-sky-200',
+    actionLabel: 'View Results →',
+  },
+  draft: {
+    dot: 'bg-white/30',
+    badge: 'border-white/10 bg-white/5 text-white/50',
+    action: 'text-white/50 hover:text-white/70',
+    actionLabel: 'View Details →',
+  },
+  cancelled: {
+    dot: 'bg-red-400/70',
+    badge: 'border-red-400/20 bg-red-400/5 text-red-300/80',
+    action: 'text-red-300/80 hover:text-red-200',
+    actionLabel: 'View Details →',
+  },
+};
 
 export function SecretaryHome({ me, hostel }: { me: MeResponse; hostel: HostelRef }) {
   const { token } = useAuth();
@@ -88,22 +134,32 @@ export function SecretaryHome({ me, hostel }: { me: MeResponse; hostel: HostelRe
           <StatCard
             label="In Progress"
             value={tournaments === null ? '…' : String(activeCount)}
+            accent="text-emerald-300"
           />
           <StatCard
             label="Tournaments Listed"
             value={tournaments === null ? '…' : String(listedCount)}
+            accent="text-sky-300"
           />
           <StatCard
             label="Teams Registered"
             value={tournaments === null ? '…' : String(teamsRegistered)}
             hint="Across all your tournaments"
+            accent="text-amber-300"
           />
         </div>
       </div>
 
       <div className="mt-8 rounded-lg border border-white/10 bg-playops-dark-surface p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-white">Tournaments</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-white">Tournaments</h2>
+            {tournaments !== null && activeCount > 0 && (
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                {activeCount} active
+              </span>
+            )}
+          </div>
           <Link
             href="/dashboard/secretary-tournaments"
             className="text-xs font-medium text-playops-amber hover:underline"
@@ -119,14 +175,36 @@ export function SecretaryHome({ me, hostel }: { me: MeResponse; hostel: HostelRe
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-white/5">
-            {recent.map((t) => (
-              <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-white">{t.name}</span>
-                <span className="text-white/50">
-                  {t.sport.name} · <span className="uppercase">{t.format}</span>
-                </span>
-              </li>
-            ))}
+            {recent.map((t) => {
+              const style = STATUS_STYLE[t.status] ?? STATUS_STYLE.draft;
+              return (
+                <li key={t.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+                    <div className="min-w-0">
+                      <p className="truncate text-white">{t.name}</p>
+                      <p className="mt-0.5 text-xs text-white/40">
+                        {t.sport.name} · <span className="uppercase">{t.format}</span> ·{' '}
+                        {t.teamCount} {t.teamCount === 1 ? 'team' : 'teams'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${style.badge}`}
+                    >
+                      {t.status.replace('_', ' ')}
+                    </span>
+                    <Link
+                      href="/dashboard/secretary-tournaments"
+                      className={`text-xs font-medium ${style.action}`}
+                    >
+                      {style.actionLabel}
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

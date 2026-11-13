@@ -4,7 +4,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   checked_out: { label: 'Checked Out', className: 'bg-emerald-500/20 text-emerald-300' },
   pending: { label: 'Pending', className: 'bg-playops-amber/20 text-playops-amber' },
   rejected: { label: 'Rejected', className: 'bg-red-500/20 text-red-300' },
-  returned: { label: 'Returned', className: 'bg-white/10 text-white/60' },
+  returned: { label: 'Returned & Verified', className: 'bg-white/10 text-white/60' },
 };
 
 export function StatusBadge({ status }: { status: string }) {

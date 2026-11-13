@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, NotificationItem } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
+// Which kind of notification this is, purely for the leading icon - the
+// unread dot (below) still carries the actual read/unread state.
+function iconFor(n: NotificationItem): string {
+  if (!n.announcement) return '⏰'; // system-generated (e.g. match reminder)
+  return n.announcement.tournamentId ? '🏆' : '📢';
+}
+
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -72,7 +79,8 @@ export function NotificationsCard() {
                 className="block w-full py-2 text-left"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className={'text-sm font-medium ' + (n.readAt ? 'text-white/50' : 'text-white')}>
+                  <span className={'flex items-center gap-1.5 text-sm font-medium ' + (n.readAt ? 'text-white/50' : 'text-white')}>
+                    <span className="shrink-0">{iconFor(n)}</span>
                     {n.announcement?.title ?? n.message}
                   </span>
                   {!n.readAt && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-playops-amber" />}

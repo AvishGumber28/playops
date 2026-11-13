@@ -12,7 +12,7 @@ export default function AdminBookingsRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-playops-dark-bg text-white">
+    <div className="min-h-screen bg-playops-dark-bg bg-[url('/images/pages-bg.png')] bg-cover bg-center bg-fixed text-white">
       <AdminNavbar me={me} />
       <main className="mx-auto max-w-5xl px-6 py-10">
         <AdminBookingsPage />

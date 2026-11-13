@@ -69,10 +69,16 @@ export function PendingChangeRequestsList() {
             <Card key={r.id} className="border-white/10 bg-playops-dark-surface">
               <CardContent className="flex items-center justify-between py-4">
                 <div>
-                  <p className="font-medium text-white">
+                  <p className="flex items-center gap-2 font-medium text-white">
+                    <span className="rounded-full border border-playops-amber/30 bg-playops-amber/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-playops-amber">
+                      Pending
+                    </span>
                     {r.user.name} <span className="font-normal text-white/50">({r.user.email})</span>
                   </p>
-                  <p className="text-sm text-white/50">wants to move to {r.requestedHostel.name}</p>
+                  <p className="text-sm text-white/50">
+                    🔄 wants to move to{' '}
+                    <span className="text-white/80">{r.requestedHostel.name}</span>
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button

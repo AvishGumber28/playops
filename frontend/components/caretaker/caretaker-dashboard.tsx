@@ -25,7 +25,7 @@ export function CaretakerDashboard({ me }: { me: MeResponse }) {
     // Fixed dark theme (bg-playops-dark-bg etc.), not the auto light/dark
     // swap - same reasoning as the login hero panel: always looks the
     // same regardless of the visitor's system color-scheme setting.
-    <div className="min-h-screen bg-playops-dark-bg text-white">
+    <div className="min-h-screen bg-playops-dark-bg bg-[url('/images/pages-bg.png')] bg-cover bg-center bg-fixed text-white">
       <CaretakerNavbar me={me} hostel={hostel} />
       <main className="mx-auto max-w-5xl px-6 py-10">
         <CaretakerHome hostel={hostel} />

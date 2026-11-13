@@ -13,6 +13,14 @@ function formatDateTime(iso: string): string {
   });
 }
 
+type Tab = 'all' | 'tournament' | 'hostel';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'all', label: 'All Announcements' },
+  { key: 'tournament', label: 'Tournament Specific' },
+  { key: 'hostel', label: 'Hostel-Wide' },
+];
+
 // FR-012: post an announcement for the whole hostel, or narrow it to one
 // of this Secretary's own tournaments (only that tournament's approved,
 // registered teams get notified instead of every hostel resident).
@@ -31,6 +39,7 @@ export function SecretaryAnnouncementsPage() {
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('all');
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -107,7 +116,14 @@ export function SecretaryAnnouncementsPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Announcements</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white">Announcements</h1>
+            {announcements && (
+              <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
+                {announcements.length} Total
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-white/50">
             Post to your whole hostel, or narrow it to one tournament&apos;s registered teams.
           </p>
@@ -195,39 +211,106 @@ export function SecretaryAnnouncementsPage() {
       {loadError && <p className="mt-4 text-sm text-red-400">{loadError}</p>}
       {deleteError && <p className="mt-4 text-sm text-red-400">{deleteError}</p>}
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+        <div className="flex gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={
+                'rounded-md px-3 py-1.5 text-xs font-medium transition-colors ' +
+                (tab === t.key
+                  ? 'bg-playops-amber/15 text-playops-amber'
+                  : 'text-white/50 hover:bg-white/5 hover:text-white/80')
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-white/30">Sorted by most recent</span>
+      </div>
+
+      <div className="mt-4 space-y-3">
         {announcements === null ? (
           <p className="text-sm text-white/40">Loading…</p>
-        ) : announcements.length === 0 ? (
-          <div className="rounded-lg border border-white/10 bg-playops-dark-surface p-10 text-center text-sm text-white/40">
-            No announcements yet.
-          </div>
-        ) : (
-          announcements.map((a) => (
-            <div key={a.id} className="rounded-lg border border-white/10 bg-playops-dark-surface p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="font-semibold text-white">{a.title}</p>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-white/40">{formatDateTime(a.createdAt)}</span>
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete(a)}
-                    disabled={deletingId === a.id}
-                    className="text-xs font-medium text-red-400 hover:underline disabled:opacity-50"
-                  >
-                    {deletingId === a.id ? 'Deleting…' : 'Delete'}
-                  </button>
+        ) : (() => {
+            const visible = announcements
+              .filter((a) =>
+                tab === 'all' ? true : tab === 'tournament' ? a.tournamentId !== null : a.tournamentId === null,
+              )
+              .slice()
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+            if (visible.length === 0) {
+              return (
+                <div className="rounded-lg border border-white/10 bg-playops-dark-surface p-10 text-center text-sm text-white/40">
+                  {announcements.length === 0
+                    ? 'No announcements yet.'
+                    : 'Nothing in this filter yet.'}
                 </div>
-              </div>
-              <p className="mt-1 text-sm text-white/70">{a.body}</p>
-              {a.tournamentId && (
-                <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-playops-amber">
-                  Tournament-specific
-                </p>
-              )}
-            </div>
-          ))
-        )}
+              );
+            }
+
+            return visible.map((a) => {
+              const tournament = a.tournamentId
+                ? tournaments.find((t) => t.id === a.tournamentId)
+                : null;
+              return (
+                <div key={a.id} className="rounded-lg border border-white/10 bg-playops-dark-surface p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="flex items-center gap-2 font-semibold text-white">
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${a.tournamentId ? 'bg-playops-amber' : 'bg-sky-400'}`}
+                      />
+                      {a.title}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-white/40">🕐 {formatDateTime(a.createdAt)}</span>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(a)}
+                        disabled={deletingId === a.id}
+                        className="text-xs font-medium text-red-400 hover:underline disabled:opacity-50"
+                      >
+                        {deletingId === a.id ? 'Deleting…' : '🗑 Delete'}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-sm text-white/70">{a.body}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {a.tournamentId ? (
+                      <>
+                        <span className="rounded-full border border-playops-amber/30 bg-playops-amber/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-playops-amber">
+                          ⚡ Tournament-Specific
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
+                          {tournament?.name ?? 'Tournament removed'}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">
+                          🌐 Hostel-Wide
+                        </span>
+                        <span className="text-[10px] text-white/30">Broadcast to all residents</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+      </div>
+
+      <div className="mt-6 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/40">
+        <span>ℹ️</span>
+        <span>
+          Announcements notify recipients instantly via their notification bell and Home
+          dashboard — hostel-wide ones reach every resident, tournament-specific ones reach only
+          that tournament&apos;s approved teams.
+        </span>
       </div>
     </div>
   );

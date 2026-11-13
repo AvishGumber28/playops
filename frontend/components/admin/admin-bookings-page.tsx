@@ -123,6 +123,7 @@ function PendingRequestsPanel({
                   </span>
                   <span className="text-white/50"> — requested by {b.requestedBy?.name ?? 'Unknown'}</span>{' '}
                   <RoleTag role={b.requestedByRole} />
+                  {b.reason && <span className="block text-xs text-white/40">{b.reason}</span>}
                 </p>
                 <div className="flex gap-2">
                   <button

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { EquipmentItem } from '@/lib/api';
 import { QuantitySelector } from './quantity-selector';
+import { equipmentIcon } from '@/lib/equipment-icons';
 
 // Shared browsing/requesting grid - the Student and Secretary Equipment
 // pages both render this. Both roles go through the same request ->
@@ -14,9 +15,14 @@ export function EquipmentBookingList({
   onRequest,
 }: {
   items: EquipmentItem[];
-  onRequest: (itemId: string, quantity: number) => Promise<{ ok: true } | { ok: false; error: string }>;
+  onRequest: (
+    itemId: string,
+    quantity: number,
+    reason?: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [reasons, setReasons] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -29,9 +35,10 @@ export function EquipmentBookingList({
 
   async function handleRequest(itemId: string) {
     const quantity = quantityOf(itemId);
+    const reason = reasons[itemId]?.trim();
     setErrors((prev) => ({ ...prev, [itemId]: '' }));
     setBusyId(itemId);
-    const result = await onRequest(itemId, quantity);
+    const result = await onRequest(itemId, quantity, reason || undefined);
     setBusyId(null);
 
     if (!result.ok) {
@@ -39,6 +46,7 @@ export function EquipmentBookingList({
       return;
     }
     setQuantities((prev) => ({ ...prev, [itemId]: 1 }));
+    setReasons((prev) => ({ ...prev, [itemId]: '' }));
   }
 
   if (items.length === 0) {
@@ -58,6 +66,7 @@ export function EquipmentBookingList({
         const outOfStock = item.availableQuantity === 0;
         const error = errors[item.id];
         const busy = busyId === item.id;
+        const { icon, badge } = equipmentIcon(item.name);
 
         return (
           <div
@@ -65,16 +74,40 @@ export function EquipmentBookingList({
             className="flex flex-col justify-between rounded-lg border border-white/10 bg-playops-dark-surface p-4"
           >
             <div>
-              <p className="font-semibold text-white">{item.name}</p>
-              <p className="mt-0.5 text-xs text-white/50">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-white">{item.name}</p>
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm ${badge}`}
+                >
+                  {icon}
+                </span>
+              </div>
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-white/50">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${outOfStock ? 'bg-red-400' : 'bg-emerald-400'}`}
+                />
                 <span className={outOfStock ? 'text-red-400' : 'text-emerald-400'}>
                   {item.availableQuantity}
-                </span>{' '}
+                </span>
                 of {item.totalQuantity} available
               </p>
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="mt-3">
+              <input
+                value={reasons[item.id] ?? ''}
+                onChange={(e) =>
+                  setReasons((prev) => ({ ...prev, [item.id]: e.target.value }))
+                }
+                disabled={outOfStock || busy}
+                maxLength={200}
+                placeholder="Reason (optional)"
+                aria-label={`Reason for requesting ${item.name}`}
+                className="h-8 w-full rounded-md border border-white/15 bg-white/5 px-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-playops-amber disabled:opacity-50"
+              />
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
               <QuantitySelector
                 value={quantity}
                 max={item.availableQuantity}

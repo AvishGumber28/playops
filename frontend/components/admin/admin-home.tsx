@@ -7,12 +7,22 @@ import { api, EquipmentBooking, EquipmentItem, VenueBooking } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import type { MeResponse } from '@/lib/api';
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent = 'text-white',
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: string;
+}) {
   return (
     <Card className="border-white/10 bg-playops-dark-surface">
       <CardContent className="py-4">
         <p className="text-[10px] font-bold uppercase tracking-wide text-white/50">{label}</p>
-        <p className="mt-1 text-xl font-bold text-white">{value}</p>
+        <p className={`mt-1 text-xl font-bold ${accent}`}>{value}</p>
         {hint && <p className="mt-0.5 text-[10px] text-white/40">{hint}</p>}
       </CardContent>
     </Card>
@@ -65,15 +75,21 @@ export function AdminHome({ me }: { me: MeResponse }) {
       </p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Equipment Items" value={loading ? '…' : String(items.length)} />
+        <StatCard
+          label="Equipment Items"
+          value={loading ? '…' : String(items.length)}
+          accent="text-sky-300"
+        />
         <StatCard
           label="Equipment Pending"
           value={loading ? '…' : String(pendingCount)}
           hint="From Students & Secretaries"
+          accent="text-playops-amber"
         />
         <StatCard
           label="Currently Checked Out"
           value={loading ? '…' : String(checkedOutCount)}
+          accent="text-emerald-300"
         />
         <StatCard
           label="Venue Requests Pending"

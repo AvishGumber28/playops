@@ -138,6 +138,7 @@ export interface SportRef {
 
 export interface TournamentInput {
   name: string;
+  description?: string;
   sportId: string;
   format: 'knockout' | 'league';
   registrationDeadline: string; // ISO date, e.g. "2026-11-30"
@@ -146,6 +147,7 @@ export interface TournamentInput {
 export interface Tournament {
   id: string;
   name: string;
+  description: string | null;
   format: 'knockout' | 'league';
   status: string; // draft | registration_open | in_progress | completed | cancelled
   cancellationReason: string | null;
@@ -155,6 +157,11 @@ export interface Tournament {
   sport: { id: string; name: string; scorecardTemplate: string };
   hostel: HostelRef;
   teamCount: number;
+  playerCount: number;
+  // Null until fixtures exist / no venue booked yet.
+  dateRangeStart: string | null;
+  dateRangeEnd: string | null;
+  venueSummary: string | null;
 }
 
 // FR-006: what a student sees - their own hostel's tournaments, each
@@ -320,6 +327,7 @@ export interface EquipmentBooking {
   itemId: string;
   item: { id: string; name: string };
   quantity: number;
+  reason: string | null;
   status: string; // pending | checked_out | rejected | returned
   requestedBy: BookingRequesterRef | null;
   requestedByRole: 'student' | 'secretary';
@@ -583,11 +591,11 @@ export const api = {
   deleteEquipmentItem: (token: string, itemId: string) =>
     request<{ deleted: boolean }>(`/api/equipment/${itemId}`, { method: 'DELETE', token }),
 
-  requestEquipment: (token: string, itemId: string, quantity: number) =>
+  requestEquipment: (token: string, itemId: string, quantity: number, reason?: string) =>
     request<EquipmentBooking>(`/api/equipment/${itemId}/bookings`, {
       method: 'POST',
       token,
-      body: { quantity },
+      body: { quantity, reason },
     }),
 
   myEquipmentBookings: (token: string) =>

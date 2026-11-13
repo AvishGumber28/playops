@@ -65,8 +65,8 @@ export function RoleSelector({ value, onChange }: RoleSelectorProps) {
             className={cn(
               'flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-[11px] font-medium transition-colors',
               active
-                ? 'border-playops-green bg-playops-green text-white'
-                : 'border-input text-muted-foreground hover:bg-accent',
+                ? 'border-playops-amber bg-playops-amber text-playops-charcoal'
+                : 'border-white/15 text-white/60 hover:bg-white/10',
             )}
           >
             <Icon className="h-4 w-4" />

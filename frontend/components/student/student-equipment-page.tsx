@@ -37,11 +37,11 @@ export function StudentEquipmentPage() {
     void load();
   }, [load]);
 
-  async function handleRequest(itemId: string, quantity: number) {
+  async function handleRequest(itemId: string, quantity: number, reason?: string) {
     if (!token) return { ok: false as const, error: 'Not signed in.' };
     try {
       const item = items?.find((i) => i.id === itemId);
-      await api.requestEquipment(token, itemId, quantity);
+      await api.requestEquipment(token, itemId, quantity, reason);
       showToast(
         `Requested ${quantity}× ${item?.name ?? 'item'} — waiting on Sports Department approval.`,
         'success',
@@ -77,7 +77,17 @@ export function StudentEquipmentPage() {
       )}
 
       <div className="mt-8 rounded-lg border border-white/10 bg-playops-dark-surface p-5">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-white">My Requests</h2>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-white">My Requests</h2>
+            {myBookings && myBookings.length > 0 && (
+              <span className="rounded-full border border-playops-amber/30 bg-playops-amber/10 px-2 py-0.5 text-[10px] font-semibold text-playops-amber">
+                {myBookings.length} {myBookings.length === 1 ? 'Item' : 'Items'}
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-white/30">Showing recent activity</span>
+        </div>
         <div className="mt-3">
           {loading ? (
             <p className="text-sm text-white/40">Loading…</p>

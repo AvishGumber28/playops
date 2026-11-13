@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api, ApiError, EquipmentItem } from '@/lib/api';
 import { showToast, ToastStack } from '@/components/ui/toast';
 import { Panel } from '@/components/equipment/panel';
+import { equipmentIcon } from '@/lib/equipment-icons';
 
 // FR-008 (Equipment Booking) - Sports Admin side, Inventory only. Split
 // out from the combined Equipment page so Inventory and Bookings
@@ -230,9 +231,20 @@ function InventoryRow({ item, onChanged }: { item: EquipmentItem; onChanged: () 
     );
   }
 
+  const { icon, badge } = equipmentIcon(item.name);
+
   return (
     <tr>
-      <td className="py-2 text-white">{item.name}</td>
+      <td className="py-2 text-white">
+        <span className="flex items-center gap-2">
+          <span
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${badge}`}
+          >
+            {icon}
+          </span>
+          {item.name}
+        </span>
+      </td>
       <td className="py-2 text-white/60">{item.totalQuantity}</td>
       <td
         className={

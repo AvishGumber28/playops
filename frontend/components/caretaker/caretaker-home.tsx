@@ -26,12 +26,22 @@ function CaretakerPageHeader({ hostel }: { hostel: HostelRef }) {
   );
 }
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent = 'text-white',
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: string;
+}) {
   return (
     <Card className="border-white/10 bg-playops-dark-surface">
       <CardContent className="py-4">
         <p className="text-[10px] font-bold uppercase tracking-wide text-white/50">{label}</p>
-        <p className="mt-1 text-xl font-bold text-white">{value}</p>
+        <p className={`mt-1 text-xl font-bold ${accent}`}>{value}</p>
         {hint && <p className="mt-0.5 text-[10px] text-white/40">{hint}</p>}
       </CardContent>
     </Card>
@@ -76,12 +86,17 @@ export function CaretakerHome({ hostel }: { hostel: HostelRef }) {
           endpoint). Hostel Members still has no backing endpoint -
           nothing elsewhere in the app needs a resident-count yet. */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Current Secretary" value={detail?.sportsSecretary?.name ?? 'Vacant'} />
+        <StatCard
+          label="Current Secretary"
+          value={detail?.sportsSecretary?.name ?? 'Vacant'}
+          accent={detail?.sportsSecretary ? 'text-sky-300' : 'text-white/40'}
+        />
         <StatCard
           label="Active Tournaments"
           value={activeTournaments === null ? '…' : String(activeTournaments)}
+          accent="text-emerald-300"
         />
-        <StatCard label="Hostel Members" value="—" hint="Coming soon" />
+        <StatCard label="Hostel Members" value="—" hint="Coming soon" accent="text-playops-amber" />
       </div>
 
       <Card className="mb-8 border-white/10 bg-playops-dark-surface">

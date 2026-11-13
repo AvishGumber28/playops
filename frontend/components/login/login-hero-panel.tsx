@@ -1,55 +1,64 @@
-import { BasketballMotif } from './basketball-motif';
+import Image from 'next/image';
+import { Play, Calendar, Trophy } from 'lucide-react';
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div>
-      <p className="text-2xl font-extrabold text-playops-amber">{value}</p>
-      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/50">
-        {label}
-      </p>
-    </div>
-  );
-}
+const TAGS = [
+  { icon: Play, label: 'Play', iconClassName: 'text-playops-amber' },
+  { icon: Calendar, label: 'Book', iconClassName: 'text-emerald-400' },
+  { icon: Trophy, label: 'Compete', iconClassName: 'text-playops-amber' },
+] as const;
 
-// Left panel of the login split-screen - marketing/brand side. Hidden
-// below md; the dark background itself still bleeds through on mobile
-// via the page-level wrapper, only this panel's content disappears.
+// Left panel of the login split-screen - marketing/brand side, laid over
+// the stadium photo the page wrapper now renders behind both panels
+// (app/login/page.tsx). Hidden below md; the photo itself still bleeds
+// through on mobile via that page-level wrapper, only this panel's own
+// content disappears.
 export function LoginHeroPanel() {
   return (
-    <aside className="relative hidden overflow-hidden bg-gradient-to-br from-playops-green via-[#122e22] to-black md:flex md:w-[58%] md:flex-col md:justify-between md:p-12 lg:p-16">
-      <BasketballMotif className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12]" />
-
-      <div className="relative z-10">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded bg-playops-amber text-sm font-black text-playops-charcoal">
-            ▸
-          </span>
-          <p className="text-lg font-extrabold tracking-tight text-white">PLAYOPS</p>
+    <aside className="relative hidden md:flex md:w-[58%] md:flex-col md:justify-between md:p-12 lg:p-16">
+      <div className="relative z-10 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Image
+              src="/images/playops-logo-v4.png"
+              alt="PlayOps"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded"
+            />
+            <p className="text-lg font-extrabold tracking-tight text-white">PLAYOPS</p>
+          </div>
+          <p className="mt-1 text-[10px] font-semibold tracking-[0.25em] text-white/50">
+            INTRAMURAL ATHLETICS
+          </p>
         </div>
-        <p className="mt-1 text-[10px] font-semibold tracking-[0.25em] text-white/50">
-          INTRAMURAL ATHLETICS
-        </p>
 
-        <div className="mt-10 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80">
-          <span className="h-1.5 w-1.5 rounded-full bg-playops-amber" />
-          Spring Intramural Cup Live
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          Official Intra-Hostel League
         </div>
+      </div>
 
-        <h1 className="mt-6 text-5xl font-black uppercase leading-[0.95] tracking-tight lg:text-6xl">
-          <span className="block text-white">Compete.</span>
-          <span className="block text-playops-amber">Dominate.</span>
-          <span className="block text-white">Represent.</span>
+      <div className="relative z-10 mt-44 lg:mt-56">
+        <h1 className="text-4xl font-black uppercase leading-[1.05] tracking-tight lg:text-5xl">
+          <span className="block text-white">One Campus.</span>
+          <span className="block text-playops-amber">Countless Champions.</span>
         </h1>
 
-        <p className="mt-6 max-w-sm text-sm text-white/60">
-          Real-time scorekeeping, tournament brackets, and roster administration engineered
-          specifically for campus leagues.
+        <p className="mt-4 max-w-sm text-sm text-white/60">
+          From the first fixture to the final whistle, PlayOps brings every hostel onto one
+          field. Build your team, reserve your ground, pick up your gear and play.
         </p>
 
-        <div className="mt-10 grid grid-cols-3 gap-6">
-          <Stat value="42+" label="Hostel Squads" />
-          <Stat value="1,840" label="Active Athletes" />
-          <Stat value="16" label="Varsity Sports" />
+        <div className="mt-6 flex flex-wrap gap-2">
+          {TAGS.map(({ icon: Icon, label, iconClassName }) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white"
+            >
+              <Icon className={`h-3.5 w-3.5 ${iconClassName}`} />
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -64,7 +73,7 @@ export function LoginHeroPanel() {
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-white/40">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          System v2.4 online
+          System v1.5 online
         </div>
       </div>
     </aside>
