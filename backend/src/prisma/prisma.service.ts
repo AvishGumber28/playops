@@ -18,8 +18,15 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(config: ConfigService) {
+    // Optional - unset in dev/prod, so this changes nothing there (pg's
+    // own default pool size applies). The e2e suite sets this (small) in
+    // .env.test: five spec files, each booting its own Nest app, were
+    // otherwise accumulating enough default-sized (max 10) connection
+    // pools between them to stall near Postgres's own max_connections.
+    const poolMax = config.get<string>('DATABASE_POOL_MAX');
     const adapter = new PrismaPg({
       connectionString: config.get<string>('DATABASE_URL'),
+      ...(poolMax ? { max: Number(poolMax) } : {}),
     });
     super({ adapter });
   }
