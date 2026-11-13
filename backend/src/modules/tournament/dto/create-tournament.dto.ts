@@ -1,9 +1,21 @@
-import { IsDateString, IsIn, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateTournamentDto {
   @IsString()
   @IsNotEmpty({ message: 'Tournament name is required.' })
   name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: 'Description must be 500 characters or fewer.' })
+  description?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'A sport is required.' })
