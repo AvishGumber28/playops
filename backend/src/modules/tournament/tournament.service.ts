@@ -5,15 +5,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { CancelTournamentDto } from './dto/cancel-tournament.dto';
 
 // Shape returned by the tournament endpoints - the tournament plus the
-// relations the frontend shows and a team count.
+// relations the frontend shows, a team/player count, and (once fixtures
+// exist) the match date span + venues in play. Card UI detail, not a new
+// workflow - every list the frontend already calls returns this same
+// richer shape for free.
 const TOURNAMENT_SELECT = {
   id: true,
   name: true,
+  description: true,
   format: true,
   status: true,
   cancellationReason: true,
@@ -24,17 +29,68 @@ const TOURNAMENT_SELECT = {
   sport: { select: { id: true, name: true, scorecardTemplate: true } },
   hostel: { select: { id: true, code: true, name: true } },
   _count: { select: { teams: true } },
+  teams: { select: { _count: { select: { players: true } } } },
+  matches: {
+    select: {
+      scheduledDate: true,
+      venueBooking: { select: { venue: { select: { name: true } } } },
+    },
+  },
 } as const;
 
 type RawTournament = {
   _count: { teams: number };
+  teams?: { _count: { players: number } }[];
+  matches?: {
+    scheduledDate: Date | string | null;
+    venueBooking: { venue: { name: string } } | null;
+  }[];
 } & Record<string, unknown>;
 
 // Prisma's _count is awkward to consume on the client - flatten it to a
-// plain teamCount before it leaves the service.
-function withTeamCount<T extends RawTournament>(t: T) {
-  const { _count, ...rest } = t;
-  return { ...rest, teamCount: _count.teams };
+// plain teamCount, plus derive the player total and (once matches are
+// scheduled) the date range and venues from the raw relations, before any
+// of this leaves the service.
+function withSummary<T extends RawTournament>(t: T) {
+  const { _count, teams, matches, ...rest } = t;
+  const playerCount = (teams ?? []).reduce(
+    (sum, team) => sum + team._count.players,
+    0,
+  );
+
+  const scheduledDates = (matches ?? [])
+    .map((m) => m.scheduledDate)
+    .filter((d): d is Date | string => d !== null)
+    .map((d) => new Date(d).getTime());
+  const dateRangeStart = scheduledDates.length
+    ? new Date(Math.min(...scheduledDates)).toISOString()
+    : null;
+  const dateRangeEnd = scheduledDates.length
+    ? new Date(Math.max(...scheduledDates)).toISOString()
+    : null;
+
+  const venueNames = Array.from(
+    new Set(
+      (matches ?? [])
+        .map((m) => m.venueBooking?.venue.name)
+        .filter((n): n is string => Boolean(n)),
+    ),
+  );
+  const venueSummary =
+    venueNames.length === 0
+      ? null
+      : venueNames.length === 1
+        ? venueNames[0]
+        : 'Multiple Venues';
+
+  return {
+    ...rest,
+    teamCount: _count.teams,
+    playerCount,
+    dateRangeStart,
+    dateRangeEnd,
+    venueSummary,
+  };
 }
 
 @Injectable()
@@ -101,6 +157,7 @@ export class TournamentService {
     const created = await this.prisma.tournament.create({
       data: {
         name: dto.name,
+        description: dto.description ?? null,
         sportId: dto.sportId,
         hostelId: hostel.id,
         format: dto.format,
@@ -110,7 +167,7 @@ export class TournamentService {
       },
       select: TOURNAMENT_SELECT,
     });
-    return withTeamCount(created);
+    return withSummary(created);
   }
 
   async listMyHostelTournaments(callerId: string) {
@@ -120,7 +177,7 @@ export class TournamentService {
       orderBy: { createdAt: 'desc' },
       select: TOURNAMENT_SELECT,
     });
-    return tournaments.map(withTeamCount);
+    return tournaments.map(withSummary);
   }
 
   // D-025: the Caretaker's read-only view of their own hostel's
@@ -140,7 +197,7 @@ export class TournamentService {
       orderBy: { createdAt: 'desc' },
       select: TOURNAMENT_SELECT,
     });
-    return tournaments.map(withTeamCount);
+    return tournaments.map(withSummary);
   }
 
   listSports() {
@@ -193,7 +250,7 @@ export class TournamentService {
     return tournaments.map((t) => {
       const team = byTournament.get(t.id);
       return {
-        ...withTeamCount(t),
+        ...withSummary(t),
         myTeam: team
           ? {
               id: team.id,
@@ -343,8 +400,18 @@ export class TournamentService {
   // generic (not "if all matches are byes") so every caller that can
   // move a match into a terminal state - cancelling one (FR-009) or
   // recording its result (FR-010) - can call the exact same check.
-  async maybeCompleteTournament(tournamentId: string) {
-    const matches = await this.prisma.match.findMany({
+  // Phase 13: accepts an optional transaction client so a caller that's
+  // already inside a $transaction (e.g. ResultsService.submitScorecard,
+  // MatchSchedulingService.cancelMatch) can fold this check into the
+  // same atomic unit instead of committing it as a separate statement -
+  // a crash between "match recorded completed" and "did that finish the
+  // tournament" used to leave the tournament stuck on in_progress
+  // forever with nothing left to actually finish it.
+  async maybeCompleteTournament(
+    tournamentId: string,
+    tx: PrismaService | Prisma.TransactionClient = this.prisma,
+  ) {
+    const matches = await tx.match.findMany({
       where: { tournamentId },
       select: { status: true },
     });
@@ -353,7 +420,7 @@ export class TournamentService {
     );
     const anyCompleted = matches.some((m) => m.status === 'completed');
     if (allTerminal && anyCompleted) {
-      await this.prisma.tournament.updateMany({
+      await tx.tournament.updateMany({
         where: {
           id: tournamentId,
           status: { notIn: ['cancelled', 'completed'] },

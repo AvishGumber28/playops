@@ -24,6 +24,7 @@ describe('MatchSchedulingService', () => {
       update: jest.Mock;
     };
     conflictLog: { create: jest.Mock; updateMany: jest.Mock };
+    $transaction: jest.Mock;
   };
   let tournamentService: {
     tournamentForSecretaryOrThrow: jest.Mock;
@@ -42,6 +43,10 @@ describe('MatchSchedulingService', () => {
         update: jest.fn(),
       },
       conflictLog: { create: jest.fn(), updateMany: jest.fn() },
+      // Phase 13: cancelMatch now runs inside an interactive transaction -
+      // handing the callback this same `prisma` mock as its `tx` keeps
+      // every existing assertion below valid unchanged.
+      $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(prisma)),
     };
     tournamentService = {
       tournamentForSecretaryOrThrow: jest.fn(),
@@ -370,6 +375,7 @@ describe('MatchSchedulingService', () => {
 
       expect(tournamentService.maybeCompleteTournament).toHaveBeenCalledWith(
         'tour-1',
+        prisma,
       );
     });
   });

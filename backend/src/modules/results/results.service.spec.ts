@@ -38,7 +38,11 @@ describe('ResultsService', () => {
       match: { findUnique: jest.fn(), update: jest.fn() },
       scorecard: { findUnique: jest.fn(), create: jest.fn() },
       tournament: { findUnique: jest.fn() },
-      $transaction: jest.fn().mockResolvedValue([]),
+      // Phase 13: submitScorecard now runs inside an interactive
+      // transaction - handing the callback this same `prisma` mock as
+      // its `tx` keeps every existing scorecard.create/match.update
+      // assertion below valid unchanged.
+      $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(prisma)),
     };
     tournamentService = {
       tournamentForSecretaryOrThrow: jest.fn(),
@@ -284,6 +288,7 @@ describe('ResultsService', () => {
       });
       expect(tournamentService.maybeCompleteTournament).toHaveBeenCalledWith(
         'tour-1',
+        prisma,
       );
       expect(result.winnerTeamId).toBe('teamA');
     });
@@ -324,6 +329,7 @@ describe('ResultsService', () => {
         1,
         2,
         'teamA',
+        prisma,
       );
     });
   });

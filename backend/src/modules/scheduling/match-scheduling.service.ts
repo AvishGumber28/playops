@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TournamentService } from '../tournament/tournament.service';
 import { SLOT_HOURS, splitHour } from '../venue/venue.constants';
@@ -132,6 +133,14 @@ export class MatchSchedulingService {
   // submitted as a new pending request through the normal approval flow
   // (D-020), never auto-booked. No alternative found within the search
   // window is surfaced in the response, not silently dropped.
+  // Phase 13: cancelling a match - marking it cancelled, logging the
+  // conflict, checking whether that finishes the tournament, freeing its
+  // old venue slot, and auto-suggesting a replacement - now commits as
+  // one transaction instead of up to six separate statements. A crash
+  // partway through used to be able to leave a match cancelled with its
+  // old booking still sitting there "approved" (silently holding a venue
+  // nobody is actually using), or cancelled with its reschedule search
+  // never even attempted.
   async cancelMatch(callerId: string, matchId: string, dto: CancelMatchDto) {
     const match = await this.matchForSecretaryOrThrow(callerId, matchId);
     if (match.status === 'completed') {
@@ -141,102 +150,114 @@ export class MatchSchedulingService {
       throw new ConflictException('This match is already cancelled.');
     }
 
-    const existingBooking = await this.prisma.venueBooking.findUnique({
-      where: { matchId },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const existingBooking = await tx.venueBooking.findUnique({
+        where: { matchId },
+      });
 
-    await this.prisma.match.update({
-      where: { id: matchId },
-      data: { status: 'cancelled', cancellationReason: dto.reason },
-    });
+      await tx.match.update({
+        where: { id: matchId },
+        data: { status: 'cancelled', cancellationReason: dto.reason },
+      });
 
-    await this.prisma.conflictLog.create({
-      data: {
-        type: 'venue',
-        tournamentId: match.tournamentId,
-        matchId,
-        resolution: 'unresolved',
-      },
-    });
+      await tx.conflictLog.create({
+        data: {
+          type: 'venue',
+          tournamentId: match.tournamentId,
+          matchId,
+          resolution: 'unresolved',
+        },
+      });
 
-    // D-022: cancelling the last still-open match can be what actually
-    // finishes a tournament - there's no "record a result" feature yet
-    // (FR-010), so every match reaching completed/cancelled is currently
-    // only reachable via byes (auto-completed at fixture generation) and
-    // this cancel path.
-    await this.tournamentService.maybeCompleteTournament(match.tournamentId);
+      // D-022: cancelling the last still-open match can be what actually
+      // finishes a tournament - there's no "record a result" feature yet
+      // (FR-010), so every match reaching completed/cancelled is currently
+      // only reachable via byes (auto-completed at fixture generation) and
+      // this cancel path.
+      await this.tournamentService.maybeCompleteTournament(
+        match.tournamentId,
+        tx,
+      );
 
-    if (!existingBooking || existingBooking.status !== 'approved') {
-      // Nothing was actually locked in for this match - nothing to
-      // search a replacement for.
+      if (!existingBooking || existingBooking.status !== 'approved') {
+        // Nothing was actually locked in for this match - nothing to
+        // search a replacement for.
+        return {
+          cancelled: true,
+          rescheduled: null,
+          message: 'Match cancelled.',
+        };
+      }
+
+      // Free the old slot immediately.
+      await tx.venueBooking.update({
+        where: { matchId },
+        data: { status: 'rejected', decidedAt: new Date() },
+      });
+
+      const alternative = await this.findAlternativeSlot(
+        tx,
+        existingBooking.venueId,
+        existingBooking.date,
+      );
+      if (!alternative) {
+        return {
+          cancelled: true,
+          rescheduled: null,
+          message: `Match cancelled. No alternative slot was found at that venue in the next ${RESCHEDULE_WINDOW_DAYS} days - reschedule manually.`,
+        };
+      }
+
+      const rescheduled = await tx.venueBooking.update({
+        where: { matchId },
+        data: {
+          venueId: alternative.venueId,
+          date: alternative.date,
+          startTime: alternative.startTime,
+          endTime: alternative.endTime,
+          status: 'pending',
+          requestedById: callerId,
+          approvedById: null,
+          decidedAt: null,
+        },
+        select: {
+          id: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          venue: { select: { id: true, name: true } },
+        },
+      });
+
+      await tx.conflictLog.updateMany({
+        where: { matchId, type: 'venue', resolution: 'unresolved' },
+        data: { resolution: 'auto_suggested', resolvedAt: new Date() },
+      });
+
+      const formatted = this.formatBooking(rescheduled);
       return {
         cancelled: true,
-        rescheduled: null,
-        message: 'Match cancelled.',
+        rescheduled: formatted,
+        message: `Match cancelled. Suggested ${formatted.venue.name}, ${formatted.hour} on ${formatted.date} - awaiting Sports Department approval.`,
       };
-    }
-
-    // Free the old slot immediately.
-    await this.prisma.venueBooking.update({
-      where: { matchId },
-      data: { status: 'rejected', decidedAt: new Date() },
     });
-
-    const alternative = await this.findAlternativeSlot(
-      existingBooking.venueId,
-      existingBooking.date,
-    );
-    if (!alternative) {
-      return {
-        cancelled: true,
-        rescheduled: null,
-        message: `Match cancelled. No alternative slot was found at that venue in the next ${RESCHEDULE_WINDOW_DAYS} days - reschedule manually.`,
-      };
-    }
-
-    const rescheduled = await this.prisma.venueBooking.update({
-      where: { matchId },
-      data: {
-        venueId: alternative.venueId,
-        date: alternative.date,
-        startTime: alternative.startTime,
-        endTime: alternative.endTime,
-        status: 'pending',
-        requestedById: callerId,
-        approvedById: null,
-        decidedAt: null,
-      },
-      select: {
-        id: true,
-        date: true,
-        startTime: true,
-        endTime: true,
-        status: true,
-        venue: { select: { id: true, name: true } },
-      },
-    });
-
-    await this.prisma.conflictLog.updateMany({
-      where: { matchId, type: 'venue', resolution: 'unresolved' },
-      data: { resolution: 'auto_suggested', resolvedAt: new Date() },
-    });
-
-    const formatted = this.formatBooking(rescheduled);
-    return {
-      cancelled: true,
-      rescheduled: formatted,
-      message: `Match cancelled. Suggested ${formatted.venue.name}, ${formatted.hour} on ${formatted.date} - awaiting Sports Department approval.`,
-    };
   }
 
   // Fetches every APPROVED booking at this venue within the search
   // window in one query, then scans forward day-by-day through the
-  // fixed slot grid for the first one not already taken.
-  private async findAlternativeSlot(venueId: string, fromDate: Date) {
+  // fixed slot grid for the first one not already taken. Takes `tx`
+  // (rather than defaulting it like the other Phase 13 methods) since
+  // its only caller, cancelMatch, is now always inside a transaction.
+  private async findAlternativeSlot(
+    tx: PrismaService | Prisma.TransactionClient,
+    venueId: string,
+    fromDate: Date,
+  ) {
     const windowEnd = new Date(fromDate);
     windowEnd.setDate(windowEnd.getDate() + RESCHEDULE_WINDOW_DAYS);
 
-    const taken = await this.prisma.venueBooking.findMany({
+    const taken = await tx.venueBooking.findMany({
       where: {
         venueId,
         status: 'approved',

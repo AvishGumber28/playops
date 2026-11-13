@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Match } from '@prisma/client';
+import { Match, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TournamentService } from './tournament.service';
 import { SwapTeamsDto } from './dto/swap-teams.dto';
@@ -34,21 +34,28 @@ export class FixtureService {
   // (winnerTeamId null) never advances anyone; the Secretary places the
   // advancing team manually via the existing drag-swap (D-018) once
   // decided out-of-band (there's no penalty-shootout/replay model here).
+  // Phase 13: `tx` lets ResultsService.submitScorecard fold this into
+  // the same transaction as the scorecard write and the match's own
+  // completed/winnerTeamId update - previously three separate commits,
+  // where a crash between them left a match correctly marked completed
+  // with a winner that never actually advanced into the next round,
+  // stuck until someone noticed and fixed the bracket by hand.
   async advanceWinner(
     tournamentId: string,
     round: number,
     matchNumber: number,
     winnerTeamId: string | null,
+    tx: PrismaService | Prisma.TransactionClient = this.prisma,
   ) {
     if (!winnerTeamId) return;
 
-    const tournament = await this.prisma.tournament.findUnique({
+    const tournament = await tx.tournament.findUnique({
       where: { id: tournamentId },
       select: { format: true },
     });
     if (tournament?.format !== 'knockout') return;
 
-    const nextMatch = await this.prisma.match.findFirst({
+    const nextMatch = await tx.match.findFirst({
       where: {
         tournamentId,
         round: round + 1,
@@ -58,7 +65,7 @@ export class FixtureService {
     if (!nextMatch) return; // this was the final
 
     const slot: SlotField = matchNumber % 2 === 1 ? 'teamAId' : 'teamBId';
-    await this.prisma.match.update({
+    await tx.match.update({
       where: { id: nextMatch.id },
       data: { [slot]: winnerTeamId },
     });

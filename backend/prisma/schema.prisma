@@ -65,6 +65,11 @@ model User {
 
   scorecardsEntered Scorecard[]
   notifications     Notification[]
+
+  // Phase 13: hostel.service.ts's getPendingChangeRequests joins through
+  // this column ("every user whose CURRENT hostel is mine") on every
+  // Caretaker dashboard load.
+  @@index([hostelId])
 }
 
 model Hostel {
@@ -112,6 +117,9 @@ model HostelChangeRequest {
   // caretaker - enforced in application logic, not expressible as a
   // simple column constraint since it depends on comparing against
   // user.hostelId at review time, not requestedHostelId.
+
+  // Phase 13: getPendingChangeRequests filters on this directly.
+  @@index([status])
 }
 
 model Sport {
@@ -127,6 +135,7 @@ model Sport {
 model Tournament {
   id                   String   @id @default(uuid())
   name                 String
+  description          String?
   sportId              String
   sport                Sport    @relation(fields: [sportId], references: [id])
   hostelId             String
@@ -230,6 +239,12 @@ model VenueBooking {
   decidedAt     DateTime?
 
   @@index([status])
+  // Phase 13: venue.service.ts's listMyBookings and match-scheduling.
+  // service.ts's conflict/reschedule-search queries both filter on
+  // these two columns directly (not just via the partial unique index
+  // below, which only ever matches status='approved' rows).
+  @@index([venueId])
+  @@index([requestedById])
   // Business rule 3 - "at most one approved booking per slot" - enforced
   // by a partial unique index, added via raw SQL in the D-019 migration
   // (Prisma's schema DSL can't express a conditional/WHERE index):
@@ -251,6 +266,7 @@ model EquipmentBooking {
   equipmentId       String
   equipment         Equipment @relation(fields: [equipmentId], references: [id])
   quantityRequested Int
+  reason            String?
   date              DateTime? @db.Date
   startTime         String?
   endTime           String?
@@ -264,6 +280,12 @@ model EquipmentBooking {
   approvedBy        User?     @relation("EquipmentApprover", fields: [approvedById], references: [id])
   createdAt         DateTime  @default(now())
   decidedAt         DateTime?
+
+  // Phase 13: equipment.service.ts filters on both of these directly -
+  // the in-play stock count, the item-delete cleanup, and a student's
+  // own "my bookings" list.
+  @@index([equipmentId])
+  @@index([requestedById])
 }
 
 model Match {
@@ -313,6 +335,12 @@ model ConflictLog {
   detectedAt   DateTime  @default(now())
   resolution   String    @default("unresolved") // auto_suggested | manually_resolved | unresolved
   resolvedAt   DateTime?
+
+  // Phase 13: conflict.service.ts's own check/delete/list cycle and
+  // match-scheduling.service.ts's cancelMatch both filter by one of
+  // these two.
+  @@index([tournamentId])
+  @@index([matchId])
 }
 
 model Announcement {
@@ -339,4 +367,7 @@ model Notification {
   createdAt      DateTime      @default(now())
 
   @@index([userId, readAt])
+  // Phase 13: match-reminder.service.ts's per-match idempotency check
+  // ("has this match already been notified") filters on this directly.
+  @@index([matchId])
 }

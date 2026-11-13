@@ -211,7 +211,22 @@ describe('TournamentService', () => {
     it("scopes to the student's own hostel and flags their own team", async () => {
       prisma.user.findUnique.mockResolvedValue({ hostelId: 'hostel-A' });
       prisma.tournament.findMany.mockResolvedValue([
-        { id: 'tour-1', name: 'Cup', _count: { teams: 3 } },
+        {
+          id: 'tour-1',
+          name: 'Cup',
+          _count: { teams: 3 },
+          teams: [{ _count: { players: 5 } }, { _count: { players: 6 } }],
+          matches: [
+            {
+              scheduledDate: '2026-11-12',
+              venueBooking: { venue: { name: 'Main Ground' } },
+            },
+            {
+              scheduledDate: '2026-11-15',
+              venueBooking: { venue: { name: 'Main Ground' } },
+            },
+          ],
+        },
       ]);
       prisma.teamPlayer.findMany.mockResolvedValue([
         {
@@ -237,6 +252,67 @@ describe('TournamentService', () => {
         isCaptain: true,
         registrationStatus: 'approved',
       });
+    });
+
+    it('derives playerCount, date range, and a single venue name from the raw relations', async () => {
+      prisma.user.findUnique.mockResolvedValue({ hostelId: 'hostel-A' });
+      prisma.tournament.findMany.mockResolvedValue([
+        {
+          id: 'tour-1',
+          name: 'Cup',
+          _count: { teams: 2 },
+          teams: [{ _count: { players: 5 } }, { _count: { players: 6 } }],
+          matches: [
+            {
+              scheduledDate: '2026-11-15',
+              venueBooking: { venue: { name: 'Main Ground' } },
+            },
+            {
+              scheduledDate: '2026-11-12',
+              venueBooking: { venue: { name: 'Main Ground' } },
+            },
+          ],
+        },
+      ]);
+      prisma.teamPlayer.findMany.mockResolvedValue([]);
+
+      const result = await service.listTournamentsForMyHostel('user-1');
+
+      expect(result[0].playerCount).toBe(11);
+      expect(result[0].dateRangeStart).toBe(
+        new Date('2026-11-12').toISOString(),
+      );
+      expect(result[0].dateRangeEnd).toBe(new Date('2026-11-15').toISOString());
+      expect(result[0].venueSummary).toBe('Main Ground');
+    });
+
+    it('reports multiple venues and a null date range when matches have none scheduled yet', async () => {
+      prisma.user.findUnique.mockResolvedValue({ hostelId: 'hostel-A' });
+      prisma.tournament.findMany.mockResolvedValue([
+        {
+          id: 'tour-1',
+          name: 'Cup',
+          _count: { teams: 0 },
+          teams: [],
+          matches: [
+            {
+              scheduledDate: null,
+              venueBooking: { venue: { name: 'Court A' } },
+            },
+            {
+              scheduledDate: null,
+              venueBooking: { venue: { name: 'Court B' } },
+            },
+          ],
+        },
+      ]);
+      prisma.teamPlayer.findMany.mockResolvedValue([]);
+
+      const result = await service.listTournamentsForMyHostel('user-1');
+
+      expect(result[0].playerCount).toBe(0);
+      expect(result[0].dateRangeStart).toBeNull();
+      expect(result[0].venueSummary).toBe('Multiple Venues');
     });
   });
 

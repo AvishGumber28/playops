@@ -102,31 +102,41 @@ export class ResultsService {
       }
     }
 
-    await this.prisma.$transaction([
-      this.prisma.scorecard.create({
+    // Phase 13: the scorecard write, the match's own completed/winner
+    // update, the winner's advancement into the next round, and the
+    // tournament-completion check all now commit as one unit - a crash
+    // partway through used to be able to leave a match marked completed
+    // with a recorded winner that never actually advanced, or a
+    // tournament stuck on in_progress with nothing left to finish it.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.scorecard.create({
         data: {
           matchId,
           sportId: tournament.sportId,
           data: dto.data,
           enteredById: callerId,
         },
-      }),
-      this.prisma.match.update({
+      });
+      await tx.match.update({
         where: { id: matchId },
         data: { status: 'completed', winnerTeamId: dto.winnerTeamId },
-      }),
-    ]);
+      });
 
-    // FR-010: this is what makes a knockout bracket actually progress -
-    // the same slot a bye fills in at generation time, now filled by a
-    // real result. A no-op for a league tournament or a draw.
-    await this.fixtureService.advanceWinner(
-      match.tournamentId,
-      match.round,
-      match.matchNumber,
-      dto.winnerTeamId,
-    );
-    await this.tournamentService.maybeCompleteTournament(match.tournamentId);
+      // FR-010: this is what makes a knockout bracket actually progress -
+      // the same slot a bye fills in at generation time, now filled by a
+      // real result. A no-op for a league tournament or a draw.
+      await this.fixtureService.advanceWinner(
+        match.tournamentId,
+        match.round,
+        match.matchNumber,
+        dto.winnerTeamId,
+        tx,
+      );
+      await this.tournamentService.maybeCompleteTournament(
+        match.tournamentId,
+        tx,
+      );
+    });
 
     return this.getScorecard(callerId, matchId);
   }
