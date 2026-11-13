@@ -890,6 +890,211 @@ a leftover nobody had gone back to update once the feature behind it became real
 
 ---
 
+### D-031 — Phase 12 security pass: one real authorization gap closed, rate limiting added, CORS hardened, JWT revocation deliberately deferred
+
+**Decision:** A targeted security pass (Phase 12), not a line-by-line re-audit of every
+endpoint - Phase 11's e2e suite already exercises role/tenant boundaries broadly, so this
+phase closed the specific gaps a grounded review actually found, plus two defense-in-depth
+additions:
+
+1. **`POST /api/notifications/send-match-reminders` now requires Sports Admin**, not just a
+   valid JWT. This endpoint fires a system-wide (every hostel, not just one Secretary's own)
+   notification run - any authenticated Student could previously trigger it. Fixed with the
+   same caller-recheck pattern `equipment.service.ts`'s `adminOrThrow` already uses (re-fetch
+   the caller's `isSportsAdmin` flag, throw `ForbiddenException` if false), not the unused
+   `PermissionsGuard`/`userContext` scaffolding from Phase 0 (never wired to any real
+   controller - still dead code, left alone rather than resurrected here).
+2. **Rate limiting added** (`@nestjs/throttler`): a generous global default (100 req/min/IP)
+   plus a much stricter limit on `/api/auth/signup` and `/api/auth/login` specifically (5/min) -
+   the only genuine pre-authentication brute-force/credential-stuffing surface, since every
+   other route already requires a valid JWT. Disabled entirely under `NODE_ENV=test` (the
+   same signal `app.module.ts`'s own `ConfigModule.forRoot` already keys off, and reliably set
+   by Jest itself before any test file loads) - the e2e suite legitimately creates far more
+   accounts per minute from one source than any real client would, and a static per-route
+   limit can't dynamically exempt that without reading config at decoration time, which
+   happens before `.env`/`.env.test` are actually loaded.
+3. **`main.ts`'s CORS setup no longer falls back to `origin: '*'`** if `ALLOWED_ORIGIN` is
+   unset - it now throws at boot instead. The fallback never fired in practice (both `.env`
+   and `.env.example` already set it), but a silent wildcard is exactly the kind of
+   misconfiguration that should fail loudly in whatever environment forgets to set it, not
+   quietly run wide open.
+4. **Dependency vulnerabilities patched** on both sides' production dependencies (`npm audit
+   fix`, plus a manual same-major bump of `next` from the exact-pinned `16.3.3` to `16.4.6`
+   for several real CVEs - RCE in Image Optimization/`next/og`, SSRF, cache poisoning, Draft
+   Mode content leaking into regular responses). Both `backend` and `frontend` now report
+   zero vulnerabilities in production dependencies (`npm audit --omit=dev`). Remaining
+   findings are dev-only tooling (eslint/typescript-eslint, vitest's `tinypool`) that would
+   need a breaking major-version bump to clear and are never reachable by a real user - left
+   as a known, accepted, documented risk rather than forced.
+5. **JWT revocation/logout is deliberately not built.** Tokens remain stateless, 12h-lived,
+   with no blacklist or refresh-token flow - a leaked token stays valid for the rest of its
+   12h regardless of password change or explicit logout. Recorded here specifically because
+   choosing *not* to build something is still an auth-affecting decision this project's own
+   process rule says shouldn't be made silently.
+
+**Reasoning:** The notifications gap and the CORS fallback were both concrete, verifiable
+issues (not theoretical hardening) found by reading the actual guard chain and bootstrap
+code, not a generic checklist. Rate limiting addresses a real gap this project had zero
+coverage for (no throttler anywhere). The dependency bumps fix CVEs with public, specific,
+plausible impact for a web app serving untrusted request bodies through a reverse-proxied
+origin pattern. Verified end-to-end rather than taken on faith: full regression after every
+change (backend 207 unit + 19 e2e [17 existing + 2 new - a Student-rejected and a Sports-
+Admin-succeeds case for the notifications fix], frontend 28 Vitest + 3 Playwright, plus a
+clean production `next build`) all still pass.
+
+**Alternatives considered (JWT revocation):**
+- A server-side token blacklist (e.g. a `RevokedToken` table or Redis set, checked on every
+  request) - rejected for now: real engineering cost (a write on every logout, a lookup on
+  every authenticated request, cleanup of expired entries) for a college intramural tool
+  where the realistic threat model is a shared/stolen device, not a persistent adversary
+  reusing a stolen token for up to 12 hours. Shortening `JWT_EXPIRES_IN` was considered as a
+  cheaper partial mitigation, but 12h matches a full day's typical usage pattern (check
+  fixtures in the morning, submit a scorecard in the evening) and re-authenticating
+  mid-session has its own cost to a non-technical user base.
+- Doing nothing and not recording the gap - rejected per this project's own governing rule:
+  an accepted risk that isn't written down isn't actually an accepted decision, it's just an
+  omission someone finds later and has to re-investigate from scratch.
+
+**Status:** Adopted - items 1-4 implemented and verified; item 5 explicitly deferred, not
+forgotten.
+
+---
+
+### D-032 — Phase 13 data-integrity pass: two write sequences made atomic, nine missing indexes added, one N+1 deliberately left alone
+
+**Decision:** A grounded pass over the actual query/write patterns (not a generic index-
+everything or wrap-everything-in-a-transaction pass):
+
+1. **`ResultsService.submitScorecard` and `MatchSchedulingService.cancelMatch` are now each
+   one atomic transaction.** Both used to commit as several separate statements: submitting a
+   scorecard wrote `Scorecard.create` + `Match.update(completed)` together (already a
+   transaction), but then called `FixtureService.advanceWinner` and `TournamentService.
+   maybeCompleteTournament` as two further, separately-committed calls - a crash between them
+   could leave a match correctly recorded completed with a winner that never actually
+   advanced into the next round, or a tournament stuck on `in_progress` with nothing left to
+   finish it, either way requiring someone to notice and fix the bracket by hand. `cancelMatch`
+   was worse - up to six sequential, individually-committed writes (cancel the match, log the
+   conflict, check tournament completion, reject the old booking, search for and apply a
+   replacement slot, mark the conflict auto-suggested), any of which could partially land. Both
+   are now a single `$transaction(async (tx) => ...)`, with `FixtureService.advanceWinner` and
+   `TournamentService.maybeCompleteTournament` changed to accept an optional `tx` parameter
+   (defaulting to `this.prisma`) so they can participate in a caller's transaction without
+   duplicating their logic.
+2. **Nine missing indexes added** on columns confirmed (by reading the actual service code,
+   not guessed) to be real `WHERE`-clause filters on tables with no existing index covering
+   them: `VenueBooking.venueId`/`requestedById`, `EquipmentBooking.equipmentId`/
+   `requestedById`, `ConflictLog.tournamentId`/`matchId`, `Notification.matchId`,
+   `User.hostelId`, `HostelChangeRequest.status`. (Prisma does not auto-index foreign key
+   columns - confirmed by grepping every existing migration's generated SQL - so these were
+   genuinely missing, not redundant with anything implicit.)
+3. **`MatchReminderService`'s per-match loop (one `findFirst` + one `findMany` + one
+   `createMany` per match, inside a `for` loop) is deliberately left as-is.** A real N+1
+   pattern, but at this project's actual scale (an intramural college league, realistically a
+   handful of matches reaching "tomorrow" on any given day) it costs nothing a user would ever
+   notice, and batching it (e.g. one `findMany` for all idempotency checks up front) would add
+   real complexity - a second data structure to reconcile against the loop - for a query count
+   that will never matter here. Recorded rather than silently skipped, per this project's own
+   rule about decisions not made silently; revisit if match volume per day ever becomes large
+   enough to matter.
+
+**Reasoning:** Both found via reading actual code paths end to end (not a lint-style sweep),
+grounded by first checking what real `WHERE`-clause columns the services already filter on.
+The two transaction fixes address genuine partial-failure windows this project had never
+closed; the indexes address query patterns the e2e and manual-testing load is too small to
+have ever made visible as slow, but are still correct schema hygiene. Verified end-to-end
+rather than taken on faith: full regression after every change (backend 207 unit + 19 e2e,
+migration applied to both the dev and `playops_test` databases) all still pass, including the
+existing e2e coverage of exactly the two flows that changed (knockout winner advancement in
+`results-and-standings.e2e-spec.ts`, cancel+auto-reschedule in `conflict-and-reschedule.e2e-
+spec.ts`).
+
+**Alternatives considered:**
+- Leaving `advanceWinner`/`maybeCompleteTournament` as standalone calls and instead wrapping
+  only the DB writes with a retry-on-failure layer - rejected: a retry doesn't fix a problem
+  that isn't "the call failed," it's "the call succeeded but a different call that should have
+  happened alongside it didn't" - only genuine atomicity closes that gap.
+- Indexing every foreign key column preemptively, regardless of whether it's actually queried
+  - rejected: an index has a real write-amplification cost on every insert/update of that
+  table; only columns a grep actually confirmed are filtered on were added.
+- Rewriting `MatchReminderService`'s loop into a batched query shape now, pre-emptively -
+  rejected per item 3 above: no real justification yet, and batching it would make the
+  idempotency check's "first match wins, later ones in the same run see it already sent"
+  property harder to reason about for no measured benefit.
+
+**Status:** Adopted.
+
+---
+
+### D-033 — Phase 14 demo environment: a separate, service-layer-driven seed script, run on demand
+
+**Decision:** `prisma/seed-demo.ts` — a new, separate script (`npm run seed:demo`) from the
+existing `prisma/seed.ts` (which stays exactly as it was: hostels, sports, venues, dummy
+Caretaker logins, run on every normal dev setup). This one populates realistic content for a
+demo/presentation: ~16 student accounts, a Secretary and a Sports Admin, and four tournaments
+at four different real lifecycle stages across two hostels -
+- **Agira Football Cup** (knockout) - fully completed: 4 teams, both semifinals and the final
+  actually scheduled to a real venue/date/time and approved, then played with real recorded
+  scores, the winner advancing through a real bracket.
+- **Agira Cricket League** (league) - fully completed: 3 teams, a full round-robin, a real
+  standings table falling out of three recorded results (not hand-entered numbers).
+- **Agira Basketball Open** (knockout) - still registration_open: 3 approved teams plus one
+  explicitly **rejected** team, giving the Secretary's approval queue something real to show.
+- **Amritam Football Cup** (Hostel B) - registration_open with 2 teams, existing specifically
+  to make the tenant-isolation point during a demo (Hostel A's Secretary/Caretaker never sees
+  this, and vice versa).
+
+Also: a 5-item equipment catalog with bookings in every real status (checked_out, returned,
+rejected, pending), venue bookings in every status, and two real announcements generating
+real notifications.
+
+Critically, **this script calls the real NestJS services directly** (`AuthService.signup`,
+`TournamentService.createTournament`, `FixtureService.generateFixtures`, `ResultsService.
+submitScorecard`, etc., resolved via `NestFactory.createApplicationContext(AppModule)` +
+`app.get(X, { strict: false })`) rather than writing Prisma rows by hand. Every business rule
+(registration deadlines, approval gates, bracket seeding math, winner advancement, equipment
+stock decrements, standings computation) is enforced by the same code the HTTP API runs, so
+the resulting data can't violate an invariant the real app wouldn't allow - it was built
+exactly the way a human clicking through the app would have built it, just scripted.
+Verified by actually running it against the dev database and querying the result back out
+(tournament statuses, match winners, equipment/venue booking states, notification counts)
+rather than trusting the script's own "it didn't throw" as proof it did the right thing.
+
+The script is idempotent against *itself* (checks for `secretary.demo@thapar.edu` and exits
+early if found) but deliberately **not destructive** - it never resets or deletes anything
+already in the database. Running it against a dev database that already has ad-hoc manual-
+testing data (confirmed present when this ran: several old test tournaments with names like
+"xyz football cup" from earlier UI-testing sessions) layers the demo content on top rather
+than touching that data. `docs/demo-script.md` documents the separate, explicit reset
+procedure for a presentation that needs a fully clean slate, rather than this script silently
+doing something destructive on its own.
+
+**Reasoning:** A seed script that hand-writes rows is fast to write but risks subtly invalid
+data (a bracket where round 2 was never correctly filled, a standings table that doesn't
+actually add up, a stock count that drifted from its bookings) - exactly the kind of thing
+this project's own Phase 11-13 work spent real effort hardening against. Driving it through
+the real services costs more code but inherits all of that correctness for free. Keeping it
+separate from `prisma/seed.ts` (per the user's explicit choice) means every normal dev/test
+setup stays exactly as lean as it already was - nobody doing a fresh day-to-day `npm install`
++ `prisma db seed` unexpectedly gets a dozen fake students and tournaments they didn't ask for.
+
+**Alternatives considered:**
+- Hand-writing the demo rows directly via Prisma - rejected: faster to write, but every
+  invariant (bracket math, standings, stock) would need manually re-deriving and would be
+  silently wrong in a way nothing would catch until a demo exposed it live.
+- Merging this content into `prisma/seed.ts` directly - rejected per the user's explicit
+  choice (this decision log entry exists partly because of that choice, not despite it):
+  every ordinary dev environment would get a dozen fake accounts and tournaments nobody asked
+  for, and a seed meant for structural bootstrapping would start doing double duty as content
+  generation.
+- Having the script reset/truncate the database itself before seeding - rejected: silently
+  destructive from a script a developer might run without reading it first. A documented,
+  explicit reset procedure (`docs/demo-script.md`) the operator chooses to run is safer than
+  an automatic one.
+
+**Status:** Adopted.
+
+---
+
 ### D-030 — Students get a read-only Fixtures view (All/My Tournaments split) and a day-before match reminder
 
 **Decision:** Two additions closing the "no student-facing fixtures view" gap flagged several

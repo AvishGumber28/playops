@@ -29,10 +29,10 @@ Then stop before starting the next phase.
 | 8 | Frontend foundation | Complete — Next.js + TypeScript + Tailwind/shadcn scaffolded, real login/signup wired to the backend, GET /api/me built (pulled forward from Phase 9), role-based dashboard routing verified with a clean build and all 5 routes serving correctly |
 | 9 | Core system — vertical slices | Complete — all 12 functional requirements (FR-001–FR-012) built, tested, and live: identity/hostel placement, Secretary appointment, tournament creation, team registration, fixtures, venue & equipment booking, results/scorecards, standings, and announcements/notifications |
 | 10 | Technical/innovative features | Complete — the conflict detection & rescheduling engine (FR-009) was built as slice 9 within the same continuous vertical-slices sequence, not as a separately-staged effort: team/venue clash detection, auto-reschedule search on cancellation, and knockout winner auto-advancement |
-| 11 | Testing | Not started — unit/integration tests exist per-slice (backend: 205/205 passing); no dedicated cross-cutting test phase has been run yet |
-| 12 | Security | Not started |
-| 13 | Performance & data integrity | Not started |
-| 14 | Realistic data & demo environment | Not started |
+| 11 | Testing | Complete — real-database e2e suite added on top of the per-slice tests: backend 224/224 (207 unit + 17 e2e against a real Postgres test DB), frontend 28/28 component tests (Vitest) + 3/3 browser e2e (Playwright) |
+| 12 | Security | Complete — see decision-log.md D-031: closed a real authorization gap, added rate limiting, hardened CORS, patched dependency CVEs, deferred JWT revocation with recorded reasoning |
+| 13 | Performance & data integrity | Complete — see decision-log.md D-032: made two write sequences atomic (submitScorecard, cancelMatch), added 9 missing indexes on confirmed hot-path columns, deferred one low-impact N+1 with reasoning |
+| 14 | Realistic data & demo environment | Complete — see decision-log.md D-033: a separate, on-demand seed script (prisma/seed-demo.ts) built entirely through the real service layer, not raw inserts; docs/demo-script.md has logins and a walkthrough |
 | 15 | Deployment | Not started |
 | 16 | Documentation | Ongoing throughout |
 | 17 | Evaluation of technical contribution | Not started |

@@ -22,10 +22,10 @@ next phase begins.
 | 8 | Frontend foundation | Complete — Next.js + TypeScript + Tailwind/shadcn scaffolded, real login/signup wired to the backend, role-based dashboard routing verified |
 | 9 | Core system — vertical slices | Complete — all 12 functional requirements (FR-001–FR-012) built, tested, and live |
 | 10 | Technical/innovative features | Complete — the conflict detection & rescheduling engine (FR-009), built as slice 9 within the same continuous vertical-slices sequence rather than a separately-staged effort |
-| 11 | Testing | Not started — unit/integration tests exist per-slice (backend: 205/205 passing); no dedicated cross-cutting test phase has been run yet |
-| 12 | Security | Not started |
-| 13 | Performance & data integrity | Not started |
-| 14 | Realistic data & demo environment | Not started |
+| 11 | Testing | Complete — real-database e2e suite added on top of the per-slice tests: backend 224/224 (207 unit + 17 e2e against a real Postgres test DB), frontend 28/28 component tests (Vitest) + 3/3 browser e2e (Playwright, driving the real UI against the real backend) |
+| 12 | Security | Complete — see decision-log.md D-031 |
+| 13 | Performance & data integrity | Complete — see decision-log.md D-032 |
+| 14 | Realistic data & demo environment | Complete — see decision-log.md D-033 |
 | 15 | Deployment | Not started |
 | 16 | Documentation | Ongoing throughout |
 | 17 | Evaluation of technical contribution | Not started |
@@ -55,13 +55,86 @@ tournament and venue modules it depends on were in place, rather than as a separ
 effort — the phase table's split between 9 and 10 reflects the original plan's categorization,
 not two different build efforts.
 
+## Completed: Phase 11
+
+A dedicated cross-cutting test phase, beyond the per-slice unit/integration tests already in
+place. On the backend: five real-database e2e spec files (golden path, role/tenant
+boundaries, venue/equipment booking, conflict detection & rescheduling, results &
+standings), run with Jest against a dedicated `playops_test` Postgres database — never the
+dev database — serialized with `--runInBand` since every spec shares that one database.
+207 pre-existing unit tests plus these 17 e2e tests: 224/224 passing. On the frontend,
+which had no test tooling at all before this phase: Vitest + React Testing Library for
+component/logic-level tests (28/28 passing — icon matching, scorecard template invariants,
+status labels, the role selector, and the notification bell's fetch/open/mark-read flow),
+plus a thin Playwright layer (3/3 passing) that drives the actual Next.js UI against the
+actual NestJS backend for the two flows that matter most: signup → login → hostel
+selection, and a Caretaker appointing a Secretary who then creates a tournament through the
+real form — catching wiring bugs neither the unit tests nor the backend's own e2e suite can
+see.
+
+## Completed: Phase 12
+
+A targeted security pass (see decision-log.md D-031 for full reasoning), not a generic
+line-by-line re-audit — Phase 11's e2e suite already exercises role/tenant boundaries broadly,
+so this phase closed the specific gaps a grounded review of the actual auth/guard/CORS/
+dependency surface found: `POST /api/notifications/send-match-reminders` was missing a role
+check (any Student could trigger a system-wide notification run - now Sports-Admin-only);
+`/api/auth/login` and `/api/auth/signup` had no rate limiting (added via `@nestjs/throttler`,
+5/min on those two routes, 100/min globally, disabled under `NODE_ENV=test`); the CORS setup
+silently fell back to `origin: '*'` if `ALLOWED_ORIGIN` was ever unset (now hard-fails at boot
+instead); and both backend and frontend production dependencies had real CVEs (now zero per
+`npm audit --omit=dev` on both, including a same-major `next` bump to 16.4.6 for several
+Next.js RCE/SSRF/cache-poisoning advisories). JWT revocation/logout was deliberately *not*
+built — recorded as an explicit, reasoned deferral rather than a silent gap. Two new e2e tests
+cover the notifications fix (Student-rejected, Sports-Admin-succeeds); full regression
+(backend 207 unit + 19 e2e, frontend 28 Vitest + 3 Playwright, plus a clean production
+`next build`) passes.
+
+## Completed: Phase 13
+
+A grounded pass over actual query/write patterns (see decision-log.md D-032), not a generic
+index-everything sweep. Two write sequences that used to commit as several separate
+statements are now each one atomic transaction: `ResultsService.submitScorecard` (scorecard
+write, match completion, winner advancement into the next round, and tournament-completion
+check all commit together - a crash partway through used to be able to leave a match
+completed with a winner that never actually advanced) and `MatchSchedulingService.cancelMatch`
+(up to six sequential writes - cancel, log the conflict, check tournament completion, free the
+old venue slot, search for and apply a replacement, mark the conflict auto-suggested - all
+now one unit). Nine indexes were added on columns confirmed, by reading the actual service
+code, to be real unindexed `WHERE`-clause filters (`VenueBooking.venueId`/`requestedById`,
+`EquipmentBooking.equipmentId`/`requestedById`, `ConflictLog.tournamentId`/`matchId`,
+`Notification.matchId`, `User.hostelId`, `HostelChangeRequest.status`). One real N+1 pattern
+(`MatchReminderService`'s per-match loop) was found and deliberately left alone, recorded
+with reasoning rather than silently skipped - it costs nothing at this project's actual
+scale. Full regression (207 unit + 19 e2e, migration applied to both the dev and
+`playops_test` databases) passes.
+
+## Completed: Phase 14
+
+A separate, on-demand seed script (`backend/prisma/seed-demo.ts`, `npm run seed:demo`) - the
+existing `prisma/seed.ts` stays exactly as lean as it was (hostels, sports, venues, dummy
+Caretaker logins only, run on every normal dev setup). The demo script populates ~16 student
+accounts, a Secretary, a Sports Admin, and four tournaments at four different real lifecycle
+stages across two hostels: a fully-completed knockout Football Cup (real bracket, real
+scheduled venues/dates, real recorded scores), a fully-completed round-robin Cricket League
+(a real standings table), a still-open Basketball tournament with one team explicitly
+rejected (so the Secretary's approval queue has something real to show), and a second
+hostel's tournament existing specifically to demonstrate tenant isolation during a demo. Plus
+a 5-item equipment catalog and venue bookings spanning every real status, and two
+announcements generating real notifications.
+
+The whole thing is built by calling the real NestJS services directly (`AuthService.signup`,
+`TournamentService.createTournament`, `ResultsService.submitScorecard`, etc.) rather than
+writing Prisma rows by hand - every business rule (deadlines, approval gates, bracket
+seeding, winner advancement, stock decrements, standings math) is enforced by the same code
+the real app runs, so the data can't be in a state the app itself wouldn't allow. Verified by
+running it against the dev database and querying the result back out, not just trusting that
+the script didn't throw. `docs/demo-script.md` has login credentials and a suggested
+presentation walkthrough. See decision-log.md D-033 for full reasoning.
+
 ## Immediate Next Milestones
 
-With all 12 functional requirements complete, the near-term path is:
+With all 12 functional requirements complete and Phases 11-14 closed out, the only phase left
+before the project is demo-ready is:
 
-1. **Phase 11 — Testing:** a dedicated cross-cutting pass, beyond the per-slice unit/
-   integration tests already in place (backend: 205/205 passing).
-2. **Phase 12 — Security:** a focused review beyond the access-control checks already
-   verified per-slice.
-3. **Phase 13 — Performance & data integrity**, **Phase 14 — Realistic data & demo
-   environment**, and **Phase 15 — Deployment** follow, in that order.
+1. **Phase 15 — Deployment.**
