@@ -14,6 +14,7 @@ const BOOKING_SELECT = {
   id: true,
   equipmentId: true,
   quantityRequested: true,
+  reason: true,
   status: true,
   createdAt: true,
   equipment: { select: { id: true, name: true } },
@@ -24,6 +25,7 @@ type RawBooking = {
   id: string;
   equipmentId: string;
   quantityRequested: number;
+  reason: string | null;
   status: string;
   createdAt: Date;
   equipment: { id: string; name: string };
@@ -98,6 +100,7 @@ export class EquipmentService {
       itemId: booking.equipmentId,
       item: booking.equipment,
       quantity: booking.quantityRequested,
+      reason: booking.reason,
       status: booking.status,
       requestedBy: booking.requestedBy,
       requestedByRole: booking.requestedBy
@@ -205,6 +208,7 @@ export class EquipmentService {
       data: {
         equipmentId: itemId,
         quantityRequested: dto.quantity,
+        reason: dto.reason ?? null,
         requestedById: callerId,
         status: 'pending',
         source: role === 'secretary' ? 'secretary_request' : 'student_request',
