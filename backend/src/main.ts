@@ -22,9 +22,18 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  app.enableCors({
-    origin: config.get<string>('ALLOWED_ORIGIN') || '*',
-  });
+  // Phase 12: this used to fall back to '*' (every origin) if
+  // ALLOWED_ORIGIN was ever unset - fine in local dev where it's always
+  // set, but a silent wildcard is exactly the kind of misconfiguration
+  // that should fail loudly at boot instead of quietly running wide open
+  // in whatever environment forgot to set it.
+  const allowedOrigin = config.get<string>('ALLOWED_ORIGIN');
+  if (!allowedOrigin) {
+    throw new Error(
+      'ALLOWED_ORIGIN must be set - refusing to start with CORS open to every origin.',
+    );
+  }
+  app.enableCors({ origin: allowedOrigin });
 
   const port = config.get<number>('PORT') || 4000;
   await app.listen(port);
