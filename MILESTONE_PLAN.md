@@ -26,7 +26,7 @@ next phase begins.
 | 12 | Security | Complete — see decision-log.md D-031 |
 | 13 | Performance & data integrity | Complete — see decision-log.md D-032 |
 | 14 | Realistic data & demo environment | Complete — see decision-log.md D-033 |
-| 15 | Deployment | Not started |
+| 15 | Deployment | Complete — live at https://playops-seven.vercel.app (frontend) + https://playops.onrender.com (backend) + Neon (database); see decision-log.md D-034 |
 | 16 | Documentation | Ongoing throughout |
 | 17 | Evaluation of technical contribution | Not started |
 | 18 | Final polish | Not started |
@@ -132,9 +132,36 @@ running it against the dev database and querying the result back out, not just t
 the script didn't throw. `docs/demo-script.md` has login credentials and a suggested
 presentation walkthrough. See decision-log.md D-033 for full reasoning.
 
+## Completed: Phase 15
+
+Deployed to three free-tier platforms, chosen after checking their actual current terms
+(not assumed): **Vercel** for the frontend, **Render** for the backend, **Neon** for Postgres
+- avoiding Railway (a 30-day trial, not indefinitely free) and Render's own free Postgres
+(expires after 30 days). Live at:
+
+- Frontend: https://playops-seven.vercel.app
+- Backend: https://playops.onrender.com
+- Database: Neon, `ap-southeast-1`, migrated (all 10 migrations) and seeded with both the
+  base seed and the Phase 14 demo content, verified by querying the row counts back out.
+
+Two genuine, previously-latent bugs surfaced and were fixed during this deploy - both existed
+before Phase 15 started, just never exercised until this was the first time anyone actually
+ran a real production build and start against this project: `npm install` was silently
+skipping `devDependencies` (where `@nestjs/cli` lives) because `NODE_ENV=production` was set
+as a platform variable; and `backend/tsconfig.build.json` didn't exclude the `prisma/` seed
+scripts, so the compiled build mirrored the whole `backend/` folder instead of flattening
+`src/` into `dist/`, meaning `dist/main.js` never actually existed where `npm run start:prod`
+looked for it. Both are real code fixes (already pushed), not Render-specific workarounds -
+see decision-log.md D-034 for the full story, including why each one was previously invisible.
+
+Verified end-to-end against the live, real deployed stack: signup, login, and role-based
+dashboards all work - not just a local smoke test.
+
 ## Immediate Next Milestones
 
-With all 12 functional requirements complete and Phases 11-14 closed out, the only phase left
-before the project is demo-ready is:
+With all 12 functional requirements complete and Phases 11-15 closed out, and the project
+fully deployed and demo-ready, the remaining phases are housekeeping rather than build work:
 
-1. **Phase 15 — Deployment.**
+1. **Phase 16 — Documentation** (ongoing throughout, per the phase table).
+2. **Phase 17 — Evaluation of technical contribution**, **Phase 18 — Final polish**, and
+   **Phase 19 — Final demo preparation** follow, in that order.

@@ -1095,6 +1095,70 @@ setup stays exactly as lean as it already was - nobody doing a fresh day-to-day 
 
 ---
 
+### D-034 — Phase 15 deployment: Vercel + Render + Neon, two real build/runtime bugs found and fixed
+
+**Decision:** Deployed to three free-tier platforms, chosen after actually checking their current
+terms rather than assuming: **Vercel** (frontend), **Render** (backend), **Neon** (Postgres).
+Not Railway (its "free" tier is a 30-day trial plus a one-time credit, then a paid plan is
+required) and not Render's own free Postgres (expires 30 days after creation) - Neon's free
+tier has no such expiry. Final live URLs: frontend `https://playops-seven.vercel.app`,
+backend `https://playops.onrender.com`, database on Neon (`ap-southeast-1`). The database was
+migrated (`prisma migrate deploy`, all 10 migrations) and seeded with both the base seed
+(hostels/sports/venues/Caretakers) and the Phase 14 demo seed, then verified by querying the
+row counts back out - not just trusting the scripts didn't throw.
+
+Two genuine, previously-latent bugs surfaced during this deploy - both existed before Phase
+15 started, just never exercised until this was the first time anyone ran a real production
+build and start against this project:
+
+1. **`npm install` was skipping `devDependencies`** (where `@nestjs/cli` lives) because
+   `NODE_ENV=production` was set as a platform environment variable, and npm honors that by
+   skipping dev deps during install - so `nest build` failed with `nest: not found`. Fixed by
+   changing Render's Build Command to `npm install --include=dev && npx prisma generate &&
+   npm run build`, forcing dev deps to install for the build step regardless of `NODE_ENV`
+   (which still applies correctly at runtime, same as always).
+2. **`backend/tsconfig.build.json` didn't exclude the `prisma/` folder**, so TypeScript's
+   computed `rootDir` for the build spanned both `backend/src/` and `backend/prisma/`
+   (seed scripts), making it the common ancestor `backend/` instead of `backend/src/`. The
+   compiled output then mirrored the whole folder structure (`dist/src/main.js`,
+   `dist/prisma/...`) instead of flattening `src/` into `dist/` directly - so `npm run
+   start:prod`'s `node dist/main` failed with `MODULE_NOT_FOUND`, because `dist/main.js`
+   never existed at that path; only `dist/src/main.js` did. Fixed by adding `prisma` and
+   `prisma.config.ts` to `tsconfig.build.json`'s `exclude` list, which also correctly stops
+   the seed scripts from being pointlessly compiled into the production build artifact at
+   all (they're meant to run via `ts-node` directly, never imported by the running app).
+
+Also added an explicit `npx prisma generate` step to the build command - Prisma 7 changed how
+reliably the client regenerates automatically on install (same category of change already
+flagged in D-009), so a build-time compile error (`Property 'match' does not exist on type
+'PrismaService'`) surfaced from a stale/ungenerated client before this was added.
+
+**Reasoning:** Both bugs were real, not deployment-specific workarounds - the `tsconfig.
+build.json` fix in particular corrects something that would have silently produced a broken
+production artifact the moment anyone ever ran `npm run start:prod` for real, locally or
+anywhere else; it had nothing to do with Render specifically. Caught and fixed by actually
+running the compiled build and process locally (`node dist/main.js`) before pushing the fix,
+not by guessing from the error message alone. Platform choice was verified against each
+provider's current terms via live web search rather than assumed from memory, since free-tier
+terms for hosting platforms change frequently and an earlier assumption (Railway) turned out
+to be wrong once checked.
+
+**Alternatives considered:**
+- Railway for backend+database (one platform, simpler networking) - rejected once its actual
+  current terms were checked: not indefinitely free, unlike the original assumption.
+- Suppressing the `nest: not found` failure by moving `@nestjs/cli` into `dependencies` -
+  rejected: that's papering over the real cause (a build step not installing what it needs)
+  rather than fixing it; every other Nest CLI consumer still correctly expects it in devDeps.
+- Leaving `ALLOWED_ORIGIN` as the placeholder until "later" - rejected: the whole point of the
+  Phase 12 hard-fail-at-boot change was to make a wrong value impossible to miss; leaving it
+  wrong on purpose during setup would have defeated that, so it was corrected as soon as the
+  real Vercel URL existed, confirmed by the CORS failure disappearing on retry.
+
+**Status:** Adopted. Live and verified end-to-end: signup, login, and role-based dashboards
+all work against the real deployed stack.
+
+---
+
 ### D-030 — Students get a read-only Fixtures view (All/My Tournaments split) and a day-before match reminder
 
 **Decision:** Two additions closing the "no student-facing fixtures view" gap flagged several
