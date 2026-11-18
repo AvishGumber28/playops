@@ -6,8 +6,8 @@ them stay implicit.
 
 - **Single-college deployment for v1.** PlayOps targets one college with multiple hostels, not
   a multi-college platform, per the original project brief.
-- **GitHub is the version control host.** Not yet created as a remote — local repo only until
-  Q-002 is resolved.
+- **GitHub is the version control host.** Remote created and pushed early in the project
+  (`github.com/AvishGumber28/playops`) — see Q-002.
 - **Primarily one active developer, with occasional contributions from one teammate**, reviewed
   through pull requests rather than direct pushes to `main`.
 - **Semester-length timeline.** Phases are sequential and none are skipped, which means later

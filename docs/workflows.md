@@ -71,8 +71,8 @@ requiring approval again for every tournament they create would be redundant.
 
 ### Registration rejected
 Automatic: a player fails the hostel-eligibility check (FR-006) and is rejected immediately,
-before the team is affected. Manual: per Q-007 (still open), the Secretary may also reject a
-registration that passed the automatic check, for reasons like an incomplete roster.
+before the team is affected. Manual: per Q-007 (resolved — D-016), the Secretary may also
+reject a registration that passed the automatic check, for reasons like an incomplete roster.
 
 ### Match cancellation / disruption
 Secretary marks the match cancelled with a reason (e.g. "Rain") → the conflict engine

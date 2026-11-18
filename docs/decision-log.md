@@ -1159,6 +1159,43 @@ all work against the real deployed stack.
 
 ---
 
+### D-035 — Testing tooling, resolving Q-003: Jest (backend, already default), Vitest + RTL + Playwright (frontend, chosen fresh)
+
+**Decision:** Backend testing tooling was never really a fresh choice - NestJS ships with
+Jest + Supertest configured by default (Phase 7), and Phase 11 just used what was already
+there for both the per-slice unit tests and the new real-database e2e suite. The frontend had
+no test tooling at all before Phase 11 (confirmed by reading its `package.json`), so that
+half was a genuine decision, made with the user directly: **both** a component/unit layer
+(Vitest + React Testing Library) and a thin browser e2e layer (Playwright), rather than
+picking just one. Vitest was pinned to `^3` rather than the newest major specifically because
+`vitest@5` requires `@types/node@^22`, which conflicts with this project's existing
+`@types/node@^20` - a real, checked compatibility constraint, not a guess.
+
+**Reasoning:** Offered as an explicit choice (component tests only vs. e2e only vs. both)
+rather than assumed, since it's a real scope/cost tradeoff: component tests are fast and
+narrow (they can't catch a real frontend↔backend wiring bug), e2e is slower but catches
+exactly the kind of bug neither the backend's own e2e suite nor a mocked component test ever
+could (a form field never wired to state, a button that never re-enables, a redirect that
+doesn't fire). The user chose both. The resulting suite (28 component tests across 6 files;
+3 Playwright e2e tests across 2 files covering signup→login→hostel-selection and
+Caretaker-appoints-Secretary→Secretary-creates-tournament) is deliberately thin on the e2e
+side - exhaustive e2e coverage duplicates what the backend's own 17 e2e tests already prove,
+so the frontend e2e layer only needs to prove the *wiring* is correct, not re-prove every
+business rule.
+
+**Alternatives considered:**
+- Component tests only - rejected: cheaper, but explicitly can't catch the class of bug this
+  layer exists to catch (real frontend/backend integration gaps).
+- A heavier e2e suite covering every page - rejected: the backend e2e suite and the component
+  tests already cover correctness; a large frontend e2e suite would mostly be re-testing
+  business logic through a much slower, flakier browser-driven path for no new coverage.
+- Upgrading to `vitest@5` immediately - rejected once its `@types/node@^22` requirement was
+  found to conflict with the project's existing `@types/node@^20`; `^3` has no such conflict.
+
+**Status:** Adopted.
+
+---
+
 ### D-030 — Students get a read-only Fixtures view (All/My Tournaments split) and a day-before match reminder
 
 **Decision:** Two additions closing the "no student-facing fixtures view" gap flagged several

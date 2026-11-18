@@ -36,7 +36,7 @@ is: for every sensitive action, check the *specific* relationship that authorize
 | Create team | Y (becomes Captain) | — | — | — | — |
 | Edit (add/remove players) | — | Y (own team) | — | — | — |
 | Withdraw team | — | Y (own team) | — | — | — |
-| Reject registration beyond auto-check | — | — | **Y — see Q-007** | — | — | 
+| Reject registration beyond auto-check | — | — | **Y — Q-007 resolved, D-016** | — | — | 
 
 ### Fixtures
 | Action | Student | Captain | Secretary | Caretaker | Sports Dept |
@@ -110,7 +110,7 @@ appointee's permissions or dashboard, unlike Sports Secretary above.
 | Hostel change | Student's *current* hostel's Caretaker |
 | Venue/equipment booking | Sports Department |
 | Tournament creation | **Nobody** — the Secretary's appointment is already the vetting step (business rule 7) |
-| Team registration | Automatic (eligibility check) + optional Secretary rejection — see Q-007 |
+| Team registration | Automatic (eligibility check) + optional Secretary rejection — Q-007 resolved, D-016 |
 
 ## Enforcement
 

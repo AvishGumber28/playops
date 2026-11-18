@@ -1,14 +1,7 @@
 // PlayOps database schema - the executable form of docs/database-design.md.
-//
-// NOT YET VALIDATED: `prisma init`/`validate`/`migrate` all need to fetch
-// Prisma's engine binaries, which failed in this sandbox (see
-// docs/technology-decisions.md for the same issue hit earlier). This file
-// was written by hand, matching database-design.md field-for-field.
-//
-// FIRST THING TO DO once Postgres is running: run
-//   npx prisma validate
-//   npx prisma migrate dev --name init
-// and fix anything that comes up before trusting this file further.
+// Validated and migrated many times over since this file was first written
+// (10 migrations as of Phase 13, successfully applied to dev, the Phase 11
+// e2e test database, and the real production Neon database in Phase 15).
 
 generator client {
   provider = "prisma-client-js"

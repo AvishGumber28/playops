@@ -33,8 +33,8 @@ Then stop before starting the next phase.
 | 12 | Security | Complete — see decision-log.md D-031: closed a real authorization gap, added rate limiting, hardened CORS, patched dependency CVEs, deferred JWT revocation with recorded reasoning |
 | 13 | Performance & data integrity | Complete — see decision-log.md D-032: made two write sequences atomic (submitScorecard, cancelMatch), added 9 missing indexes on confirmed hot-path columns, deferred one low-impact N+1 with reasoning |
 | 14 | Realistic data & demo environment | Complete — see decision-log.md D-033: a separate, on-demand seed script (prisma/seed-demo.ts) built entirely through the real service layer, not raw inserts; docs/demo-script.md has logins and a walkthrough |
-| 15 | Deployment | Complete — see decision-log.md D-034: live at https://playops-seven.vercel.app (Vercel) + https://playops.onrender.com (Render) + Neon (database); fixed two previously-latent build/runtime bugs found during the real deploy |
-| 16 | Documentation | Ongoing throughout |
+| 15 | Deployment | Complete — see decision-log.md D-034: live at https://playops-sports.vercel.app (Vercel) + https://playops.onrender.com (Render) + Neon (database); fixed two previously-latent build/runtime bugs found during the real deploy |
+| 16 | Documentation | Complete — audited docs/ against the finished implementation: closed 3 stale open questions (Q-001, Q-003 → decision-log.md D-035, Q-007), fixed stale cross-references, corrected technology-decisions.md and schema.prisma's outdated comments, rewrote the root README (was still describing Phase 0) |
 | 17 | Evaluation of technical contribution | Not started |
 | 18 | Final polish | Not started |
 | 19 | Final demo preparation | Not started |

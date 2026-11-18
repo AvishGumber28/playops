@@ -26,8 +26,8 @@ next phase begins.
 | 12 | Security | Complete — see decision-log.md D-031 |
 | 13 | Performance & data integrity | Complete — see decision-log.md D-032 |
 | 14 | Realistic data & demo environment | Complete — see decision-log.md D-033 |
-| 15 | Deployment | Complete — live at https://playops-seven.vercel.app (frontend) + https://playops.onrender.com (backend) + Neon (database); see decision-log.md D-034 |
-| 16 | Documentation | Ongoing throughout |
+| 15 | Deployment | Complete — live at https://playops-sports.vercel.app (frontend) + https://playops.onrender.com (backend) + Neon (database); see decision-log.md D-034 |
+| 16 | Documentation | Complete — audited all of docs/ against the actual finished implementation: closed 3 stale open questions (Q-001, Q-003 [added decision-log.md D-035], Q-007), fixed cross-references that still said "Q-007 still open" after D-016 had already resolved it, corrected technology-decisions.md's stale Prisma caveat and deployment-target section, fixed schema.prisma's outdated header comment, and rewrote the root README (was still describing Phase 0 - "no application code exists yet" - despite the project being fully built and deployed) |
 | 17 | Evaluation of technical contribution | Not started |
 | 18 | Final polish | Not started |
 | 19 | Final demo preparation | Not started |

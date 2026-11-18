@@ -34,15 +34,13 @@ here — noted explicitly below so it's clear which is which.
   scaffolding specifically because Prisma auto-generates TypeScript types directly from the
   schema, which pairs naturally with an all-TypeScript stack.
 
-**Caveat, stated plainly:** Prisma's tooling failed to fetch its engine binaries in my
-testing sandbox — that environment's network access is deliberately restricted to a small
-allow-list of domains, and Prisma's binary CDN wasn't on it. That's a constraint of *my*
-sandbox, not a finding about Prisma itself, and shouldn't happen on a normal development
-machine with regular internet access. **Recommended first step of Phase 7, before writing any
-real logic:** run `npx prisma init` and `npx prisma migrate dev` once, standalone, to confirm
-it works cleanly in your actual environment. If it somehow doesn't, the plain-`pg` +
-hand-written-SQL-migrations approach from the earlier scaffold is a proven fallback, already
-built and tested end-to-end — not a hypothetical one.
+**Caveat, since resolved:** an earlier sandbox environment couldn't fetch Prisma's engine
+binaries (a restricted network allow-list in that one environment, not a Prisma problem) -
+flagged at the time as something to re-test on a normal dev machine before trusting it. It
+has since been exercised continuously and successfully across the whole project: local dev,
+the Phase 11 e2e suite's own `playops_test` database, and - the most demanding real test of
+all - migrating and seeding an actual production Neon database during Phase 15 deployment.
+The plain-`pg` fallback was never needed.
 
 ## Caching
 
@@ -68,12 +66,20 @@ built and tested end-to-end — not a hypothetical one.
 ## API testing during development
 
 - **VS Code REST Client / Thunder Client** for manual endpoint checks while building.
-- **Jest + Supertest** reserved for the real automated suite in Phase 11 — NestJS ships with
-  Jest configured by default, so this needs no extra setup when Phase 7 starts.
+- **Jest + Supertest**, used for both the per-slice unit tests (NestJS ships with Jest
+  configured by default) and the real-database e2e suite built in Phase 11 (224 tests total:
+  207 unit + 17 e2e). The frontend's own equivalent - Vitest + React Testing Library for
+  component tests, Playwright for browser e2e - was a separate Phase 11 decision; see D-035.
 
 ## Deployment target
 
-Self-managed VPS, confirmed earlier in the project. Full specifics belong to Phase 15.
+**Changed from the original plan.** A self-managed VPS was the working assumption through
+most of the project, but Phase 15 actually deployed to managed free-tier platforms instead -
+**Vercel** (frontend), **Render** (backend), **Neon** (Postgres) - after checking each
+provider's actual current terms rather than assuming. No server to patch or provision, and
+genuinely free for a project at this scale (see decision-log.md D-034 for the full reasoning,
+including why Railway and Render's own free Postgres were ruled out). Live at
+https://playops-sports.vercel.app.
 
 ---
 

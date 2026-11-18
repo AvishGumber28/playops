@@ -184,11 +184,12 @@ Matches
 forfeits remaining matches rather than deleting the team).
 
 > **Design note on `registrationStatus`:** defaults to `approved` automatically once the
-> hostel-eligibility check passes. This field exists specifically so Q-007 (still open —
-> whether Secretary can manually reject a registration beyond the automatic check) doesn't
-> block schema design: if resolved "yes," a Secretary flips this to `rejected`; if resolved
-> "no," the field simply never changes from its default. Either answer works without a
-> migration.
+> hostel-eligibility check passes. This field was deliberately added before Q-007 (whether a
+> Secretary can manually reject a registration beyond the automatic check) was answered, so
+> schema design didn't have to block on it: if resolved "yes," a Secretary flips this to
+> `rejected`; if resolved "no," the field simply never changes from its default. Q-007
+> resolved "yes" (see D-016) — `TeamService.setRegistrationStatus` is exactly that flip,
+> real and tested.
 
 ---
 
