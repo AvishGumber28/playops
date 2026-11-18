@@ -3,6 +3,8 @@
 Smart Campus Sports & Tournament Management System — a college-specific sports operations
 platform, not a generic tournament manager.
 
+https://playops-sports.vercel.app/
+
 This project is developed over a full semester using a strict phase-by-phase process. We do
 not skip phases, and we do not build the whole application at once. See
 `docs/decision-log.md` for why, and `docs/PROCESS.md` for the phase list itself.
